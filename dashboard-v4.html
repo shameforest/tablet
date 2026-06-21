@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dashboard</title>
+<style>
+  :root{
+    --bg:#11151c; --bg-2:#0c0f15; --card:#1a212b; --card-2:#161d26;
+    --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.14);
+    --hi:#eef2f6; --mid:#9aa7b4; --low:#5d6976;
+    --amber:#e8b14c; --green:#4ec58a; --blue:#5aa9e6; --purple:#b18be0; --red:#e8654e;
+    --mono: ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 85% -10%, rgba(232,177,76,.05), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(90,169,230,.05), transparent 60%),
+      var(--bg);
+    color:var(--hi); font-family:var(--sans); overflow:hidden;
+    -webkit-font-smoothing:antialiased; user-select:none; -webkit-tap-highlight-color:transparent;
+  }
+  .screen{height:100vh; padding:clamp(12px,2vh,24px); display:none; flex-direction:column; gap:clamp(10px,1.5vh,16px);}
+  .screen.active{display:flex;}
+  .fadein{animation:fade .3s ease both;}
+  @keyframes fade{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
+  @media (prefers-reduced-motion:reduce){.fadein{animation:none;}}
+
+  .card{background:linear-gradient(180deg,var(--card),var(--card-2)); border:1px solid var(--line); border-radius:16px; padding:clamp(12px,1.8vh,18px); min-height:0; position:relative; overflow:hidden;}
+  .lab{font-size:clamp(10px,1.4vh,13px); letter-spacing:.16em; text-transform:uppercase; color:var(--mid); font-weight:600; display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);}
+
+  .head{display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex:0 0 auto;}
+  .head .wd{font-size:clamp(13px,2.2vh,20px); letter-spacing:.22em; text-transform:uppercase; color:var(--amber); font-weight:600;}
+  .head .dt{font-size:clamp(11px,1.6vh,15px); color:var(--mid);}
+  .clock{font-family:var(--mono); font-size:clamp(30px,6.5vh,60px); font-weight:600; line-height:.9; font-variant-numeric:tabular-nums;}
+  .clock .s{color:var(--low); font-size:.45em; vertical-align:.18em;}
+
+  .toprow{display:grid; grid-template-columns:2.1fr 1fr 1fr; gap:clamp(10px,1.5vh,16px); flex:0 0 auto;}
+  .cal .big{display:flex; align-items:baseline; gap:10px;}
+  .cal .kcal{font-family:var(--mono); font-weight:700; font-size:clamp(30px,6vh,56px); line-height:1; font-variant-numeric:tabular-nums;}
+  .cal .unit{font-size:clamp(13px,1.9vh,17px); color:var(--mid);}
+  .cal .sub{font-size:clamp(11px,1.6vh,14px); color:var(--low); margin-top:4px;}
+  .bar{height:7px; border-radius:4px; background:rgba(255,255,255,.08); margin-top:10px; overflow:hidden;}
+  .bar > i{display:block; height:100%; border-radius:4px; transition:width .5s ease;}
+
+  .mini{cursor:pointer; display:flex; flex-direction:column; transition:transform .12s, filter .12s;}
+  .mini:active{transform:scale(.97); filter:brightness(1.12);}
+  .wxmini{display:flex; align-items:center; gap:10px; margin-top:auto;}
+  .wxmini .ic{font-size:clamp(24px,4.4vh,38px);}
+  .wxmini .tp{font-family:var(--mono); font-size:clamp(22px,4vh,34px); font-variant-numeric:tabular-nums;}
+  .wxmini .cond{font-size:clamp(11px,1.5vh,13px); color:var(--mid);}
+  .finbtn .val{font-family:var(--mono); font-weight:700; font-size:clamp(22px,4.4vh,38px); margin-top:auto; font-variant-numeric:tabular-nums;}
+  .lockico{position:absolute; top:12px; right:14px; color:var(--amber); font-size:16px;}
+
+  .qbar{flex:0 0 auto; display:flex; align-items:center; justify-content:center; padding:clamp(9px,1.5vh,15px) clamp(16px,2vh,22px); text-align:center; cursor:pointer; overflow:visible;}
+  .qbar .qtext{font-size:clamp(14px,2.3vh,21px); font-weight:800; color:var(--amber); text-align:center; line-height:1.3; letter-spacing:.01em; text-shadow:0 0 10px rgba(232,177,76,.6), 0 0 24px rgba(232,177,76,.32); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; transition:opacity .45s ease;}
+
+  .midrow{display:grid; grid-template-columns:1fr 1fr; gap:clamp(10px,1.5vh,16px); flex:1 1 38%; min-height:0;}
+  .listbox{display:flex; flex-direction:column;}
+  .items{overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:7px;}
+  .todo{display:flex; align-items:center; gap:10px; padding:8px 10px; background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:10px; font-size:clamp(13px,1.9vh,16px); cursor:pointer;}
+  .todo .box{width:20px;height:20px;border-radius:6px;border:2px solid var(--line-2); flex:none; display:flex;align-items:center;justify-content:center; font-size:13px;}
+  .todo.done .box{background:var(--green); border-color:var(--green); color:#0c1a12;}
+  .todo.done .txt{text-decoration:line-through; color:var(--low);}
+  .todo .tm{font-family:var(--mono); color:var(--amber); font-size:.85em; min-width:3.1em;}
+  .todo .txt{flex:1;}
+  .note-li{display:flex; gap:9px; font-size:clamp(13px,1.9vh,16px); line-height:1.4; padding:3px 0;}
+  .note-li::before{content:"▸"; color:var(--purple); flex:none;}
+  .empty{color:var(--low); font-style:italic; font-size:clamp(12px,1.7vh,15px); padding:4px 0;}
+
+  .tilerow{display:grid; grid-template-columns:1fr 1fr; gap:clamp(10px,1.5vh,16px); flex:1 1 34%; min-height:0;}
+  .tile{position:relative; border-radius:18px; padding:clamp(14px,2.2vh,22px); display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; overflow:hidden; border:1px solid var(--line-2); background:linear-gradient(180deg,var(--card),var(--card-2)); transition:transform .12s, filter .12s;}
+  .tile:active{transform:scale(.985); filter:brightness(1.12);}
+  .tile .glow{position:absolute; inset:0; opacity:.16; background:radial-gradient(380px 240px at 80% 120%, var(--accent), transparent 70%); pointer-events:none;}
+  .tile .top{display:flex; align-items:center; justify-content:space-between;}
+  .tile .icon{font-size:clamp(28px,5vh,46px);}
+  .tile .chev{color:var(--low); font-size:clamp(20px,3.6vh,30px);}
+  .tile .title{font-size:clamp(19px,3.6vh,32px); font-weight:700; margin-top:auto;}
+  .tile .teaser{font-size:clamp(12px,1.7vh,15px); color:var(--mid); margin-top:4px;}
+  .tile .accentbar{height:5px; border-radius:4px; background:var(--accent); margin-top:10px; width:48px;}
+
+  .abar{display:flex; align-items:center; gap:14px; flex:0 0 auto;}
+  .back{display:flex; align-items:center; gap:9px; background:rgba(255,255,255,.06); border:1px solid var(--line-2); color:var(--hi); border-radius:14px; padding:11px 18px; font-size:clamp(14px,2vh,18px); font-weight:600; cursor:pointer;}
+  .back:active{filter:brightness(1.2);}
+  .atitle{display:flex; align-items:center; gap:12px; font-size:clamp(20px,4vh,36px); font-weight:700;}
+  .atitle .ai{font-size:clamp(26px,4.6vh,42px);}
+  .dcontent{flex:1; display:flex; flex-direction:column; gap:clamp(10px,1.5vh,16px); min-height:0; overflow-y:auto;}
+
+  /* single-habit calendar heatmap (UNREAL) */
+  .hmnav{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .hmnav .mlabel{font-size:clamp(15px,2.4vh,20px); font-weight:600;}
+  .hmnav button{background:rgba(255,255,255,.06); border:1px solid var(--line-2); color:var(--hi); border-radius:10px; padding:8px 16px; font-size:18px; cursor:pointer;}
+  .hmnav button:active{background:var(--amber); color:#21180a;}
+  .hmgrid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+  .hmgrid .wdh{text-align:center; font-size:clamp(9px,1.3vh,12px); color:var(--low); text-transform:uppercase; padding-bottom:2px;}
+  .hmcell{aspect-ratio:1/1; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:clamp(11px,1.7vh,15px); font-family:var(--mono); border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--mid);}
+  .hmcell.done{background:var(--green); color:#0c1a12; border-color:var(--green); font-weight:600;}
+  .hmcell.miss{background:rgba(232,101,78,.85); color:#1a0c0a; border-color:var(--red); font-weight:600;}
+  .hmcell.future{opacity:.35;}
+  .hmcell.tap{cursor:pointer;}
+  .hmcell.today{outline:2px solid var(--amber); outline-offset:1px;}
+  .hmcell.blank{background:transparent; border:none;}
+
+  /* multi-habit toggles + matrix (Sport) */
+  .htoggles{display:flex; gap:10px; flex-wrap:wrap;}
+  .htog{flex:1; min-width:110px; display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 10px; border-radius:13px; background:rgba(255,255,255,.05); border:1px solid var(--line-2); color:var(--mid); font-size:clamp(14px,2vh,17px); font-weight:600; cursor:pointer;}
+  .htog .em{font-size:1.3em;}
+  .htog.on{color:#0c1a12;}
+  .htog:active{filter:brightness(1.1);}
+  .matrix{display:grid; column-gap:4px; row-gap:10px; overflow-x:auto; margin-bottom:10px;}
+  .mx-h{font-size:9px; color:var(--low); text-align:center; align-self:end;}
+  .mx-lbl{font-size:clamp(12px,1.7vh,14px); display:flex; align-items:center; gap:7px; white-space:nowrap; padding-right:8px;}
+  .mx-cell{border-radius:5px; background:rgba(255,255,255,.05); border:1px solid var(--line); cursor:pointer; min-height:26px;}
+  .mx-cell.on{border:none;}
+  .mx-cell.future{opacity:.3; cursor:default;}
+  .mx-cell.today{outline:2px solid var(--amber); outline-offset:1px;}
+
+  .foodrow{display:flex; align-items:center; gap:12px; padding:8px 11px; background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:10px; font-size:clamp(13px,1.9vh,16px);}
+  .foodrow .tm{font-family:var(--mono); color:var(--amber); min-width:3.1em;}
+  .foodrow .it{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .foodrow .kc{font-family:var(--mono); color:var(--mid);}
+  .bigval{font-family:var(--mono); font-weight:600; font-size:clamp(30px,6vh,56px); font-variant-numeric:tabular-nums;}
+  .hint2{font-size:clamp(11px,1.5vh,13px); color:var(--low); margin-top:8px;}
+
+  /* weather detail */
+  .wxtop{flex:0 0 auto; display:flex; flex-direction:column;}
+  .hours{display:flex; gap:8px; overflow-x:auto; padding-bottom:6px;}
+  .hour{flex:0 0 auto; width:clamp(64px,9vh,86px); text-align:center; background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:12px; padding:10px 4px;}
+  .hour .h{font-family:var(--mono); font-size:clamp(11px,1.6vh,14px); color:var(--mid);}
+  .hour .i{font-size:clamp(20px,3.4vh,30px); margin:3px 0;}
+  .hour .t{font-family:var(--mono); font-size:clamp(13px,1.9vh,16px);}
+  .hour .p{font-size:clamp(10px,1.4vh,12px); color:var(--blue);}
+  .wxbot{flex:1 1 auto; min-height:0; display:flex; flex-direction:column;}
+  .days7{display:flex; flex-direction:column; gap:7px; overflow-y:auto;}
+  .d7{display:grid; grid-template-columns:1.4fr .6fr 1fr 1fr; align-items:center; gap:10px; background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:11px; padding:9px 14px; font-size:clamp(13px,1.9vh,16px);}
+  .d7 .dn{font-weight:600;}
+  .d7 .di{font-size:clamp(20px,3.2vh,28px); text-align:center;}
+  .d7 .dtemp{font-family:var(--mono);}
+  .d7 .dp{font-family:var(--mono); color:var(--blue); text-align:right; font-size:.9em;}
+  .wxsrc{flex:0 0 auto; font-size:11px; color:var(--low); text-align:right; padding:2px 4px;}
+
+  .gear{position:fixed; top:8px; right:8px; width:42px; height:42px; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--mid); font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:30; opacity:.4;}
+  .gear:active{opacity:1;}
+  .offline{position:fixed; bottom:6px; left:12px; font-size:12px; color:var(--red); opacity:.85; display:none;}
+
+  .scrim{position:fixed; inset:0; background:rgba(5,7,10,.72); backdrop-filter:blur(4px); z-index:40; display:none; align-items:center; justify-content:center; padding:16px;}
+  .scrim.open{display:flex;}
+  .pinbox{width:min(360px,92vw); background:var(--card); border:1px solid var(--line-2); border-radius:22px; padding:24px; text-align:center;}
+  .pintitle{font-size:21px; font-weight:700; margin-bottom:4px;}
+  .pinhint{font-size:13px; color:var(--mid); margin-bottom:14px;}
+  .pindots{display:flex; gap:13px; justify-content:center; margin-bottom:8px; height:15px;}
+  .pindots i{width:13px;height:13px;border-radius:50%;border:2px solid var(--line-2);display:block;}
+  .pindots i.on{background:var(--amber);border-color:var(--amber);}
+  .pinmsg{height:17px; color:var(--red); font-size:13px; margin-bottom:10px;}
+  .pinpad{display:grid; grid-template-columns:repeat(3,1fr); gap:11px; margin-bottom:12px;}
+  .pinkey{padding:17px 0; border-radius:13px; background:var(--bg-2); border:1px solid var(--line-2); color:var(--hi); font-size:23px; font-family:var(--mono); cursor:pointer;}
+  .pinkey:active{background:var(--amber); color:#21180a;}
+  .pinkey.empty{background:transparent; border:none;}
+  .pinkey.fn{font-size:19px; color:var(--mid);}
+  .shake{animation:shk .4s;}
+  @keyframes shk{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
+
+  .editor{width:min(660px,95vw); max-height:92vh; overflow-y:auto; background:var(--card); border:1px solid var(--line-2); border-radius:20px; padding:20px;}
+  .editor h2{font-size:18px; margin-bottom:4px;}
+  .editor p.hint{font-size:13px; color:var(--mid); margin-bottom:14px;}
+  .fset{border-top:1px solid var(--line); padding:13px 0;}
+  .fset h3{font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--amber); margin-bottom:10px;}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;}
+  .fld{display:flex; flex-direction:column; gap:5px; flex:1; min-width:90px;}
+  .fld.sm{flex:0 0 80px;}
+  label{font-size:12px; color:var(--mid);}
+  input,select,textarea{background:var(--bg-2); border:1px solid var(--line-2); border-radius:10px; color:var(--hi); padding:10px 11px; font-size:16px; font-family:var(--sans); width:100%;}
+  textarea{min-height:84px; resize:vertical; line-height:1.4;}
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--amber);}
+  .btn{border:none; border-radius:10px; padding:10px 15px; font-size:15px; font-weight:600; cursor:pointer; font-family:var(--sans);}
+  .btn.primary{background:var(--amber); color:#21180a;}
+  .btn.ghost{background:rgba(255,255,255,.06); color:var(--hi); border:1px solid var(--line-2);}
+  .btn.mini2{padding:9px 12px; font-size:14px;}
+  .btn.danger{background:rgba(232,101,78,.15); color:var(--red); border:1px solid rgba(232,101,78,.4);}
+  .rowlist{display:flex; flex-direction:column; gap:7px; margin-bottom:10px;}
+  .rl{display:flex; align-items:center; gap:9px; background:var(--bg-2); border:1px solid var(--line); border-radius:9px; padding:7px 10px; font-size:14px;}
+  .rl .a{font-family:var(--mono); color:var(--amber); font-size:13px;}
+  .rl .b{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .foot{display:flex; gap:10px; justify-content:flex-end; padding-top:14px; border-top:1px solid var(--line); margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="gear" id="gear">⚙</div>
+<div class="offline" id="offline">Wetter offline</div>
+
+<!-- HUB -->
+<div class="screen active" id="hub">
+  <div class="head">
+    <div><div class="wd" id="wd">—</div><div class="dt" id="dt">—</div></div>
+    <div class="clock" id="clock">--:--<span class="s">--</span></div>
+  </div>
+  <div class="toprow">
+    <div class="card cal">
+      <div class="lab"><span class="dot" id="calDot"></span>Kalorien heute</div>
+      <div class="big"><span class="kcal" id="calLeft">–</span><span class="unit">kcal übrig</span></div>
+      <div class="sub" id="calSub">—</div>
+      <div class="bar"><i id="calBar"></i></div>
+    </div>
+    <div class="card mini" id="wxBtn">
+      <div class="lab"><span class="dot" style="--accent:var(--blue)"></span><span id="wxCity">Wetter</span></div>
+      <div class="wxmini"><span class="ic" id="wxIc">·</span><span class="tp" id="wxTp">–°</span></div>
+      <div class="cond" id="wxCond">lädt …</div>
+    </div>
+    <div class="card mini finbtn" id="finBtn">
+      <div class="lockico">🔒</div>
+      <div class="lab"><span class="dot" style="--accent:var(--green)"></span>Finanzen</div>
+      <div class="val" id="finVal">•••</div>
+    </div>
+  </div>
+  <div class="card qbar" id="quoteBar">
+    <span class="qtext" id="quoteText">—</span>
+  </div>
+  <div class="midrow">
+    <div class="card listbox">
+      <div class="lab"><span class="dot" style="--accent:var(--amber)"></span>Heute · To-Do</div>
+      <div class="items" id="todoBox"></div>
+    </div>
+    <div class="card listbox" id="notesCard">
+      <div class="lab"><span class="dot" style="--accent:var(--purple)"></span>Notizen<span style="margin-left:auto;color:var(--low);font-size:.85em;letter-spacing:0;text-transform:none;">Zitate ✎</span></div>
+      <div class="items" id="notesBox"></div>
+    </div>
+  </div>
+  <div class="tilerow">
+    <div class="tile" id="tileUnreal" style="--accent:var(--amber)">
+      <div class="glow"></div>
+      <div class="top"><span class="icon">🎮</span><span class="chev">›</span></div>
+      <div><div class="title">UNREAL</div><div class="teaser">3D-Arbeit · Heatmap</div><div class="accentbar"></div></div>
+    </div>
+    <div class="tile" id="tileSport" style="--accent:var(--green)">
+      <div class="glow"></div>
+      <div class="top"><span class="icon">💪</span><span class="chev">›</span></div>
+      <div><div class="title">Gesundheit & Sport</div><div class="teaser">Sport · Meditation · Journal</div><div class="accentbar"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div class="screen" id="detail">
+  <div class="abar">
+    <button class="back" data-back>← Zurück</button>
+    <div class="atitle"><span class="ai" id="dIcon">·</span><span id="dTitle">—</span></div>
+  </div>
+  <div class="dcontent" id="dContent"></div>
+</div>
+
+<!-- WEATHER -->
+<div class="screen" id="weather">
+  <div class="abar">
+    <button class="back" data-back>← Zurück</button>
+    <div class="atitle"><span class="ai">🌍</span><span id="wxdTitle">Wetter</span></div>
+  </div>
+  <div class="card wxtop">
+    <div class="lab"><span class="dot" style="--accent:var(--blue)"></span>Heute · stündlich</div>
+    <div class="hours" id="wxHours"></div>
+  </div>
+  <div class="card wxbot">
+    <div class="lab"><span class="dot" style="--accent:var(--blue)"></span>7 Tage</div>
+    <div class="days7" id="wx7"></div>
+  </div>
+  <div class="wxsrc" id="wxSrc"></div>
+</div>
+
+<!-- PIN -->
+<div class="scrim" id="pinScrim">
+  <div class="pinbox" id="pinBox">
+    <div class="pintitle">🔒 Finanzen</div>
+    <div class="pinhint">PIN eingeben</div>
+    <div class="pindots" id="pinDots"></div>
+    <div class="pinmsg" id="pinMsg"></div>
+    <div class="pinpad" id="pinPad"></div>
+    <button class="btn ghost" id="pinCancel" style="width:100%">Abbrechen</button>
+  </div>
+</div>
+
+<!-- EDITOR -->
+<div class="scrim" id="scrim">
+  <div class="editor">
+    <h2>Bearbeiten</h2>
+    <p class="hint">Lokal gespeichert. Später kommen die Inhalte automatisch aus Obsidian.</p>
+    <div class="fset"><h3>Wetter-Ort</h3>
+      <div class="row">
+        <div class="fld"><label>PLZ oder Ort suchen</label><input id="e_place" placeholder="z. B. 47638 oder Straelen"></div>
+        <button class="btn primary mini2" id="e_geo">Suchen</button>
+      </div>
+      <div id="e_geoMsg" style="font-size:12px;color:var(--mid);min-height:16px;margin:7px 0 2px;"></div>
+      <div class="row">
+        <div class="fld"><label>Anzeigename</label><input id="e_city"></div>
+        <div class="fld sm"><label>lat</label><input id="e_lat" inputmode="decimal"></div>
+        <div class="fld sm"><label>lon</label><input id="e_lon" inputmode="decimal"></div>
+      </div>
+    </div>
+    <div class="fset"><h3>Kalorien-Profil</h3>
+      <div class="row">
+        <div class="fld sm"><label>Größe (cm)</label><input id="e_h" inputmode="numeric"></div>
+        <div class="fld sm"><label>Gewicht (kg)</label><input id="e_w" inputmode="decimal"></div>
+        <div class="fld sm"><label>Alter</label><input id="e_age" inputmode="numeric"></div>
+        <div class="fld sm"><label>Geschlecht</label><select id="e_sex"><option value="m">m</option><option value="w">w</option></select></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="fld"><label>Aktivität</label><select id="e_act">
+          <option value="1.2">kaum aktiv</option>
+          <option value="1.375">leicht (1–3×/Wo)</option>
+          <option value="1.55">mäßig (3–5×)</option>
+          <option value="1.725">sehr aktiv (6–7×)</option>
+          <option value="1.9">extrem aktiv</option>
+        </select></div>
+        <div class="fld"><label>Ziel-Korrektur (kcal/Tag; 0 = halten, −300 = abnehmen)</label><input id="e_adj" inputmode="numeric"></div>
+      </div>
+    </div>
+    <div class="fset"><h3>Heute gegessen (Bereich Sport)</h3>
+      <div class="rowlist" id="e_foodlist"></div>
+      <div class="row">
+        <div class="fld sm"><label>Zeit</label><input type="time" id="e_fT"></div>
+        <div class="fld"><label>Gericht</label><input id="e_fI" placeholder="z. B. Haferflocken"></div>
+        <div class="fld sm"><label>kcal</label><input id="e_fK" inputmode="numeric"></div>
+        <button class="btn primary mini2" id="e_fAdd">+</button>
+      </div>
+    </div>
+    <div class="fset"><h3>Heute · To-Do</h3>
+      <div class="rowlist" id="e_todolist"></div>
+      <div class="row">
+        <div class="fld sm"><label>Zeit (optional)</label><input type="time" id="e_tT"></div>
+        <div class="fld"><label>Aufgabe</label><input id="e_tX" placeholder="z. B. Rig finalisieren"></div>
+        <button class="btn primary mini2" id="e_tAdd">+</button>
+      </div>
+    </div>
+    <div class="fset"><h3>Notizen (eine Zeile = ein Stichpunkt)</h3>
+      <textarea id="e_notes" placeholder="Stichpunkt 1&#10;Stichpunkt 2"></textarea>
+    </div>
+    <div class="fset"><h3>Zitate / Reminder (eine Zeile = ein Eintrag, wechselt automatisch)</h3>
+      <textarea id="e_quotes" placeholder="Wasser trinken 💧&#10;„Disziplin schlägt Motivation.“&#10;Kurz strecken"></textarea>
+    </div>
+    <div class="fset"><h3>Finanzen & PIN</h3>
+      <div class="row">
+        <div class="fld"><label>Budget (€)</label><input id="e_bVal" inputmode="decimal"></div>
+        <div class="fld"><label>Warnschwelle (€)</label><input id="e_bThr" inputmode="decimal"></div>
+        <div class="fld"><label>PIN (4–6 Ziffern, leer = aus)</label><input id="e_pin" inputmode="numeric" maxlength="6"></div>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn ghost" id="e_close">Schließen</button>
+      <button class="btn primary" id="e_save">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- ZITATE / REMINDER -->
+<div class="scrim" id="quoteScrim">
+  <div class="editor" style="width:min(560px,95vw)">
+    <h2>Zitate / Reminder</h2>
+    <p class="hint">Diese Einträge wechseln automatisch in der Leiste oben. Antippen zum Ändern, ✕ zum Löschen. Später automatisch aus Obsidian.</p>
+    <div class="rowlist" id="q_list"></div>
+    <div class="row">
+      <div class="fld"><label>Neuer Eintrag</label><input id="q_new" placeholder="z. B. Wasser trinken 💧"></div>
+      <button class="btn primary mini2" id="q_add">+</button>
+    </div>
+    <div class="foot">
+      <button class="btn primary" id="q_close">Fertig</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+var mem={};
+function rawLoad(){ try{var s=localStorage.getItem("hub2");if(s)return JSON.parse(s);}catch(e){} try{if(mem.hub2)return JSON.parse(mem.hub2);}catch(e){} return null; }
+function save(){ var s=JSON.stringify(state); try{localStorage.setItem("hub2",s);}catch(e){mem.hub2=s;} }
+
+var DEFAULTS={
+  city:"Straelen", lat:51.4419, lon:6.2667,
+  height:173, weight:115, age:30, sex:"m", activity:1.375, adj:0,
+  food:[], todos:[], notes:"Beispiel-Stichpunkt\nNoch einer",
+  quotes:"Wasser trinken nicht vergessen 💧\n„Disziplin schlägt Motivation.“\nKurz aufstehen und strecken\nEin Schritt nach dem anderen",
+  sportDays:[], medDays:[], journalDays:[], unrealDays:[],
+  bVal:450, bThr:100, pin:"1234"
+};
+var state=Object.assign({},DEFAULTS,rawLoad()||{});
+["food","todos","sportDays","medDays","journalDays","unrealDays"].forEach(function(k){ if(!Array.isArray(state[k])) state[k]=[]; });
+if(typeof state.pin==="undefined") state.pin="1234";
+function validLat(v){ return typeof v==="number" && isFinite(v) && v>=-90 && v<=90; }
+function validLon(v){ return typeof v==="number" && isFinite(v) && v>=-180 && v<=180; }
+// Selbstheilung: falls früher ungültige Koordinaten gespeichert wurden (z. B. eine PLZ im lat-Feld), auf Standard zurücksetzen
+if(!validLat(+state.lat) || !validLon(+state.lon)){ state.lat=DEFAULTS.lat; state.lon=DEFAULTS.lon; if(!state.city) state.city=DEFAULTS.city; save(); }
+
+var WD=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+var WD2=["So","Mo","Di","Mi","Do","Fr","Sa"];
+var WDH=["Mo","Di","Mi","Do","Fr","Sa","So"];
+var MO=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+function pad(n){return(n<10?"0":"")+n;}
+function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+function todayStr(){return ymd(new Date());}
+function esc(t){return (t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function fmtEur(v){try{return new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(v);}catch(e){return "€"+Math.round(v);}}
+
+function renderClock(){
+  var d=new Date();
+  document.getElementById("wd").textContent=WD[d.getDay()];
+  document.getElementById("dt").textContent=d.getDate()+". "+MO[d.getMonth()]+" "+d.getFullYear();
+  document.getElementById("clock").innerHTML=pad(d.getHours())+":"+pad(d.getMinutes())+'<span class="s">'+pad(d.getSeconds())+'</span>';
+}
+function tdee(){
+  var b=10*(+state.weight||0)+6.25*(+state.height||0)-5*(+state.age||0);
+  b += (state.sex==="w")? -161 : 5;
+  return Math.round(b*(+state.activity||1.2) + (+state.adj||0));
+}
+function eatenToday(){ var t=todayStr(),s=0; state.food.forEach(function(f){ if((f.date||t)===t) s+=(+f.kcal||0); }); return s; }
+function renderCalories(){
+  var target=tdee(), eaten=eatenToday(), left=target-eaten;
+  document.getElementById("calLeft").textContent=left;
+  document.getElementById("calSub").textContent=eaten+" von "+target+" kcal gegessen";
+  var cls=left<0?"--red":(left<target*0.15?"--amber":"--green");
+  var cl=document.getElementById("calLeft"); cl.style.color="var("+cls+")";
+  var dd=document.getElementById("calDot"); dd.style.setProperty("--accent","var("+cls+")"); dd.style.background="var("+cls+")";
+  var pct=target>0?Math.max(0,Math.min(100,(eaten/target)*100)):0;
+  var bar=document.getElementById("calBar"); bar.style.width=pct+"%"; bar.style.background="var("+cls+")";
+}
+function renderFin(){
+  var v=+state.bVal||0, thr=+state.bThr||0; var cls=v<=0?"--red":(v<thr?"--amber":"--green");
+  var el=document.getElementById("finVal"); el.textContent="•••"; el.style.color="var("+cls+")";
+  document.querySelector("#finBtn .lockico").style.display=(state.pin?"block":"none");
+}
+function renderTodos(){
+  var box=document.getElementById("todoBox"); box.innerHTML=""; var t=todayStr();
+  var list=state.todos.filter(function(x){return (x.date||t)===t;}).sort(function(a,b){return (a.time||"99").localeCompare(b.time||"99");});
+  if(!list.length){ box.innerHTML='<div class="empty">Nichts zu tun — frei für Fokusarbeit.</div>'; return; }
+  list.forEach(function(x){
+    var r=document.createElement("div"); r.className="todo"+(x.done?" done":"");
+    r.innerHTML='<span class="box">'+(x.done?"✓":"")+'</span>'+(x.time?'<span class="tm">'+x.time+'</span>':'')+'<span class="txt">'+esc(x.text)+'</span>';
+    r.onclick=function(){ x.done=!x.done; save(); renderTodos(); };
+    box.appendChild(r);
+  });
+}
+function renderNotes(){
+  var box=document.getElementById("notesBox"); box.innerHTML="";
+  var lines=(state.notes||"").split("\n").map(function(s){return s.trim();}).filter(Boolean);
+  if(!lines.length){ box.innerHTML='<div class="empty">Keine Notizen — über ⚙ befüllen.</div>'; return; }
+  lines.forEach(function(l){ var d=document.createElement("div"); d.className="note-li"; d.textContent=l; box.appendChild(d); });
+}
+
+/* rotierende Zitate / Reminder (eine Zeile = ein Eintrag, später aus Obsidian-Notiz) */
+var quoteIdx=0, quoteTimer=null;
+function quoteList(){ return (state.quotes||"").split("\n").map(function(s){return s.trim();}).filter(Boolean); }
+function showQuote(){
+  var el=document.getElementById("quoteText"), bar=document.getElementById("quoteBar"); if(!el||!bar) return;
+  var list=quoteList();
+  if(!list.length){ bar.style.display="none"; return; }
+  bar.style.display="flex";
+  if(quoteIdx>=list.length) quoteIdx=0;
+  var txt=list[quoteIdx]; quoteIdx++;
+  el.style.opacity="0";
+  setTimeout(function(){ el.textContent=txt; el.style.opacity="1"; }, 220);   // sanftes Überblenden
+}
+function startQuotes(){ clearInterval(quoteTimer); quoteIdx=0; showQuote(); quoteTimer=setInterval(showQuote, 15000); }
+
+/* Maske zum Verwalten der Zitate (löschen / ersetzen / hinzufügen) */
+function renderQuoteList(){
+  var box=document.getElementById("q_list"); box.innerHTML="";
+  var list=quoteList();
+  if(!list.length){ box.innerHTML='<div class="rl" style="color:var(--low)">Noch keine Zitate — unten hinzufügen.</div>'; return; }
+  list.forEach(function(txt, i){
+    var r=document.createElement("div"); r.className="rl";
+    var inp=document.createElement("input");
+    inp.value=txt; inp.style.flex="1"; inp.style.background="transparent"; inp.style.border="none"; inp.style.padding="2px 0"; inp.style.fontSize="14px";
+    inp.onchange=function(){ var arr=quoteList(); arr[i]=inp.value; state.quotes=arr.join("\n"); save(); showQuote(); };   // ersetzen
+    var del=document.createElement("button"); del.className="btn danger mini2"; del.textContent="✕";
+    del.onclick=function(){ var arr=quoteList(); arr.splice(i,1); state.quotes=arr.join("\n"); save(); renderQuoteList(); showQuote(); };   // löschen
+    r.appendChild(inp); r.appendChild(del); box.appendChild(r);
+  });
+}
+function openQuotes(){ renderQuoteList(); document.getElementById("q_new").value=""; document.getElementById("quoteScrim").classList.add("open"); }
+function closeQuotes(){ document.getElementById("quoteScrim").classList.remove("open"); }
+
+/* single-habit calendar heatmap (UNREAL) */
+function toggleDay(arrName,ds){ var arr=state[arrName]; var i=arr.indexOf(ds); if(i>=0)arr.splice(i,1); else arr.push(ds); save(); }
+function renderCalHeatmap(host, arrName, monthDate){
+  var y=monthDate.getFullYear(), m=monthDate.getMonth();
+  var startDow=(new Date(y,m,1).getDay()+6)%7, dim=new Date(y,m+1,0).getDate(), today=todayStr(), arr=state[arrName];
+  var html='<div class="hmnav"><button data-hm="prev">‹</button><span class="mlabel">'+MO[m]+' '+y+'</span><button data-hm="next">›</button></div><div class="hmgrid">';
+  WDH.forEach(function(w){ html+='<div class="wdh">'+w+'</div>'; });
+  for(var b=0;b<startDow;b++) html+='<div class="hmcell blank"></div>';
+  for(var day=1;day<=dim;day++){
+    var ds=y+"-"+pad(m+1)+"-"+pad(day), fut=ds>today, done=arr.indexOf(ds)>=0, cls="hmcell";
+    if(done)cls+=" done"; else if(!fut)cls+=" miss"; else cls+=" future";
+    if(!fut)cls+=" tap"; if(ds===today)cls+=" today";
+    html+='<div class="'+cls+'" data-day="'+ds+'">'+day+'</div>';
+  }
+  html+='</div><div class="hint2">Tag antippen = grün/rot umschalten. Später automatisch aus Obsidian.</div>';
+  host.innerHTML=html;
+  host.querySelector('[data-hm="prev"]').onclick=function(){ hmMonth.setMonth(hmMonth.getMonth()-1); renderCalHeatmap(host,arrName,hmMonth); };
+  host.querySelector('[data-hm="next"]').onclick=function(){ hmMonth.setMonth(hmMonth.getMonth()+1); renderCalHeatmap(host,arrName,hmMonth); };
+  Array.prototype.forEach.call(host.querySelectorAll('.hmcell.tap'),function(c){ c.onclick=function(){ toggleDay(arrName,c.getAttribute("data-day")); renderCalHeatmap(host,arrName,hmMonth); }; });
+}
+
+/* multi-habit matrix (Sport) */
+var HABITS=[
+  {key:"sportDays", icon:"💪", name:"Sport", color:"--green"},
+  {key:"medDays", icon:"🧘", name:"Meditation", color:"--blue"},
+  {key:"journalDays", icon:"📓", name:"Journal", color:"--purple"}
+];
+function renderMatrix(host, monthDate){
+  var y=monthDate.getFullYear(), m=monthDate.getMonth(), dim=new Date(y,m+1,0).getDate(), today=todayStr();
+  var html='<div class="hmnav"><button data-hm="prev">‹</button><span class="mlabel">'+MO[m]+' '+y+'</span><button data-hm="next">›</button></div>';
+  html+='<div class="matrix" style="grid-template-columns:minmax(96px,auto) repeat('+dim+',minmax(20px,1fr));">';
+  // header row
+  html+='<div class="mx-h"></div>';
+  for(var day=1;day<=dim;day++){ html+='<div class="mx-h">'+day+'</div>'; }
+  // habit rows
+  HABITS.forEach(function(hb){
+    html+='<div class="mx-lbl"><span>'+hb.icon+'</span>'+hb.name+'</div>';
+    for(var d2=1;d2<=dim;d2++){
+      var ds=y+"-"+pad(m+1)+"-"+pad(d2), fut=ds>today, on=state[hb.key].indexOf(ds)>=0;
+      var cls="mx-cell"+(on?" on":"")+(fut?" future":"")+(ds===today?" today":"");
+      var st=on?(' style="background:var('+hb.color+')"'):'';
+      html+='<div class="'+cls+'" data-h="'+hb.key+'" data-day="'+ds+'"'+st+'></div>';
+    }
+  });
+  html+='</div><div class="hint2">Zelle antippen zum Umschalten. Später automatisch aus Obsidian.</div>';
+  host.innerHTML=html;
+  host.querySelector('[data-hm="prev"]').onclick=function(){ hmMonth.setMonth(hmMonth.getMonth()-1); renderMatrix(host,hmMonth); };
+  host.querySelector('[data-hm="next"]').onclick=function(){ hmMonth.setMonth(hmMonth.getMonth()+1); renderMatrix(host,hmMonth); };
+  Array.prototype.forEach.call(host.querySelectorAll('.mx-cell'),function(c){
+    if(c.classList.contains("future"))return;
+    c.onclick=function(){ toggleDay(c.getAttribute("data-h"), c.getAttribute("data-day")); renderMatrix(host,hmMonth); renderTodayToggles(); };
+  });
+}
+var toggleHost=null;
+function renderTodayToggles(){
+  if(!toggleHost)return;
+  var t=todayStr(); toggleHost.innerHTML="";
+  HABITS.forEach(function(hb){
+    var on=state[hb.key].indexOf(t)>=0;
+    var b=document.createElement("div"); b.className="htog"+(on?" on":"");
+    if(on) b.style.background="var("+hb.color+")";
+    b.innerHTML='<span class="em">'+hb.icon+'</span>'+hb.name+(on?" ✓":"");
+    b.onclick=function(){ toggleDay(hb.key,t); renderTodayToggles(); if(matrixHost) renderMatrix(matrixHost,hmMonth); };
+    toggleHost.appendChild(b);
+  });
+}
+
+/* detail */
+var hmMonth=new Date(), matrixHost=null;
+function openDetail(type){ if(type==="finanzen" && state.pin && state.pin.length>0){ openPinGate(); return; } buildDetail(type); }
+function buildDetail(type){
+  hmMonth=new Date(); matrixHost=null; toggleHost=null;
+  var dC=document.getElementById("dContent"); dC.innerHTML="";
+  var icon=document.getElementById("dIcon"), title=document.getElementById("dTitle");
+
+  if(type==="unreal"){
+    icon.textContent="🎮"; title.textContent="UNREAL";
+    var hm=document.createElement("div"); hm.className="card"; hm.style.flex="0 0 auto";
+    hm.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--amber)"></span>An welchen Tagen 3D gearbeitet</div><div data-host></div>';
+    dC.appendChild(hm); renderCalHeatmap(hm.querySelector("[data-host]"),"unrealDays",hmMonth);
+
+  } else if(type==="sport"){
+    icon.textContent="💪"; title.textContent="Gesundheit & Sport";
+    // today toggles
+    var tg=document.createElement("div"); tg.className="card"; tg.style.flex="0 0 auto";
+    tg.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--green)"></span>Heute erledigt?</div><div class="htoggles" data-tg></div>';
+    dC.appendChild(tg); toggleHost=tg.querySelector("[data-tg]"); renderTodayToggles();
+    // matrix
+    var mx=document.createElement("div"); mx.className="card"; mx.style.flex="0 0 auto";
+    mx.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--green)"></span>Übersicht Monat</div><div data-mx></div>';
+    dC.appendChild(mx); matrixHost=mx.querySelector("[data-mx]"); renderMatrix(matrixHost,hmMonth);
+    // calories
+    var target=tdee(), eaten=eatenToday(), left=target-eaten; var cls=left<0?"--red":(left<target*0.15?"--amber":"--green");
+    var cal=document.createElement("div"); cal.className="card"; cal.style.flex="0 0 auto";
+    cal.innerHTML='<div class="lab"><span class="dot" style="--accent:var('+cls+')"></span>Kalorien heute</div><div class="bigval" style="color:var('+cls+')">'+left+' <span style="font-size:.4em;color:var(--mid)">kcal übrig</span></div><div class="hint2">'+eaten+' von '+target+' kcal · grobe Schätzung aus deinem Profil</div>';
+    dC.appendChild(cal);
+    // food
+    var food=document.createElement("div"); food.className="card"; food.style.flex="0 0 auto";
+    var t=todayStr(); var list=state.food.filter(function(f){return (f.date||t)===t;}).sort(function(a,b){return (a.time||"").localeCompare(b.time||"");});
+    var inner='<div class="lab"><span class="dot" style="--accent:var(--green)"></span>Heute gegessen</div>';
+    if(!list.length) inner+='<div class="empty">Noch nichts eingetragen — über ⚙.</div>';
+    else list.forEach(function(f){ inner+='<div class="foodrow" style="margin-bottom:6px"><span class="tm">'+(f.time||"—")+'</span><span class="it">'+esc(f.item)+'</span><span class="kc">'+(+f.kcal||0)+' kcal</span></div>'; });
+    food.innerHTML=inner; dC.appendChild(food);
+
+  } else if(type==="finanzen"){
+    icon.textContent="💶"; title.textContent="Finanzen";
+    var v=+state.bVal||0, thr=+state.bThr||0; var c2=v<=0?"--red":(v<thr?"--amber":"--green");
+    var p=document.createElement("div"); p.className="card";
+    p.innerHTML='<div class="lab"><span class="dot" style="--accent:var('+c2+')"></span>Budget</div><div class="bigval" style="color:var('+c2+')">'+fmtEur(v)+'</div><div class="hint2">Manuell gepflegt. Später ggf. bunq — nur ein abgeleiteter Wert, kein roher Kontostand.</div>';
+    dC.appendChild(p);
+  }
+  showScreen("detail");
+}
+
+/* weather */
+var wxData=null, wxRetry=null, wxRetryDelay=8000, wxLastOk=0, wxLastReason="—";
+try{ var _wc=localStorage.getItem("hub2wx"); if(_wc) wxData=JSON.parse(_wc); }catch(e){}
+var WMO={0:["☀️","Klar"],1:["🌤️","Heiter"],2:["⛅","Wolkig"],3:["☁️","Bedeckt"],45:["🌫️","Nebel"],48:["🌫️","Nebel"],51:["🌦️","Niesel"],53:["🌦️","Niesel"],55:["🌦️","Niesel"],56:["🌧️","Eisregen"],57:["🌧️","Eisregen"],61:["🌧️","Regen"],63:["🌧️","Regen"],65:["🌧️","Starkregen"],66:["🌧️","Eisregen"],67:["🌧️","Eisregen"],71:["🌨️","Schnee"],73:["🌨️","Schnee"],75:["❄️","Starker Schnee"],77:["🌨️","Schneegriesel"],80:["🌦️","Schauer"],81:["🌦️","Schauer"],82:["⛈️","Starke Schauer"],85:["🌨️","Schneeschauer"],86:["🌨️","Schneeschauer"],95:["⛈️","Gewitter"],96:["⛈️","Gewitter"],99:["⛈️","Schweres Gewitter"]};
+function wmo(c){return WMO[c]||["🌡️","—"];}
+function tcol(t){if(t<0)return"#7cc0ff";if(t<5)return"var(--blue)";if(t<12)return"#4fb6c5";if(t<20)return"var(--green)";if(t<27)return"var(--amber)";return"var(--red)";}
+/* Datenquellen: 1) Open-Meteo (weltweit), 2) DWD/Bright Sky (Deutscher Wetterdienst, Fallback) – beide kostenlos, ohne Key, mit CORS */
+function omUrl(){
+  return "https://api.open-meteo.com/v1/forecast?latitude="+state.lat+"&longitude="+state.lon+
+    "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m"+
+    "&hourly=temperature_2m,weather_code,precipitation_probability"+
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"+
+    "&timezone=auto&forecast_days=7";
+}
+function bsUrl(){
+  var t=new Date(), d1=new Date(t.getTime()+6*86400000);
+  return "https://api.brightsky.dev/weather?lat="+state.lat+"&lon="+state.lon+
+    "&date="+ymd(t)+"&last_date="+ymd(d1)+"&tz=Europe%2FBerlin";
+}
+// Bright-Sky-Icons grob auf WMO-Codes abbilden, damit dieselbe Anzeige-Logik greift
+var BS2WMO={"clear-day":0,"clear-night":0,"partly-cloudy-day":2,"partly-cloudy-night":2,"cloudy":3,"fog":45,"wind":3,"rain":61,"sleet":66,"snow":71,"hail":77,"thunderstorm":95};
+function bsCode(ic){ return (ic!=null && BS2WMO[ic]!=null) ? BS2WMO[ic] : 3; }
+function bsToOM(bs){                          // Bright-Sky-Antwort in Open-Meteo-Form übersetzen
+  var rec=(bs&&bs.weather)||[]; if(!rec.length) return null;
+  var now=Date.now(), ci=0, best=Infinity;
+  for(var i=0;i<rec.length;i++){ var diff=Math.abs(new Date(rec[i].timestamp).getTime()-now); if(diff<best){best=diff;ci=i;} }
+  var cur=rec[ci];
+  var H={time:[],temperature_2m:[],weather_code:[],precipitation_probability:[]};
+  rec.forEach(function(r){ H.time.push(String(r.timestamp).slice(0,16)); H.temperature_2m.push(r.temperature); H.weather_code.push(bsCode(r.icon)); H.precipitation_probability.push(null); });
+  var byDay={};
+  rec.forEach(function(r){ var d=String(r.timestamp).slice(0,10); if(!byDay[d]) byDay[d]={min:Infinity,max:-Infinity,noon:null,codes:{}};
+    if(r.temperature!=null){ if(r.temperature<byDay[d].min)byDay[d].min=r.temperature; if(r.temperature>byDay[d].max)byDay[d].max=r.temperature; }
+    var hr=+String(r.timestamp).slice(11,13); if(hr>=11&&hr<=14) byDay[d].noon=r.icon; byDay[d].codes[r.icon]=(byDay[d].codes[r.icon]||0)+1; });
+  var keys=Object.keys(byDay).sort();
+  var D={time:[],temperature_2m_max:[],temperature_2m_min:[],weather_code:[],precipitation_probability_max:[]};
+  keys.forEach(function(d){ var o=byDay[d]; var ic=o.noon||Object.keys(o.codes).sort(function(a,b){return o.codes[b]-o.codes[a];})[0];
+    D.time.push(d); D.temperature_2m_max.push(Math.round(o.max)); D.temperature_2m_min.push(Math.round(o.min)); D.weather_code.push(bsCode(ic)); D.precipitation_probability_max.push(null); });
+  return { current:{temperature_2m:cur.temperature, weather_code:bsCode(cur.icon), apparent_temperature:cur.temperature, relative_humidity_2m:cur.relative_humidity, wind_speed_10m:cur.wind_speed}, hourly:H, daily:D };
+}
+var WX_SOURCES=[
+  {name:"Open-Meteo", url:omUrl, map:function(d){return d;}},
+  {name:"DWD/Bright Sky", url:bsUrl, map:bsToOM}
+];
+function fetchWeather(){ clearTimeout(wxRetry); wxTry(0,"keine Daten"); }
+function wxTry(idx, lastReason){
+  if(idx>=WX_SOURCES.length){                 // alle Quellen fehlgeschlagen -> Grund anzeigen, weiter versuchen
+    wxLastReason=lastReason;
+    if(!wxData){ document.getElementById("wxCond").textContent="offline – "+lastReason; document.getElementById("offline").style.display="block"; }
+    wxRetryDelay=Math.min(Math.round(wxRetryDelay*1.6),60000);
+    wxRetry=setTimeout(fetchWeather, wxRetryDelay);
+    return;
+  }
+  var src=WX_SOURCES[idx], done=false;
+  function next(reason){ if(done)return; done=true; wxTry(idx+1, reason); }   // nächste Quelle probieren
+  function good(d){
+    if(done)return; done=true; clearTimeout(wxRetry);
+    d._src=src.name; wxData=d; wxRetryDelay=8000; wxLastOk=Date.now();
+    try{ localStorage.setItem("hub2wx", JSON.stringify(d)); }catch(e){}      // letzten Stand cachen
+    document.getElementById("offline").style.display="none";
+    renderWxMini();
+    if(document.getElementById("weather").classList.contains("active")) buildWeatherDetail();
+  }
+  try{
+    var xhr=new XMLHttpRequest();              // XHR statt fetch: kompatibel auch mit alten WebViews (FullyKiosk)
+    xhr.open("GET", src.url(), true);
+    xhr.timeout=12000;
+    xhr.onreadystatechange=function(){
+      if(xhr.readyState!==4) return;
+      if(xhr.status>=200 && xhr.status<300){
+        try{ var mapped=src.map(JSON.parse(xhr.responseText)); if(mapped && mapped.current && mapped.daily && mapped.daily.time && mapped.daily.time.length) good(mapped); else next("ungültige Antwort"); }
+        catch(e){ next("Parsing-Fehler"); }
+      } else { next("Fehler "+(xhr.status||"?")); }
+    };
+    xhr.ontimeout=function(){ next("Zeitüberschreitung"); };
+    xhr.onerror=function(){ next("kein Netz/blockiert"); };   // CORS/CSP/DNS/Zertifikat landen hier
+    xhr.onabort=function(){ next("abgebrochen"); };
+    xhr.send();
+  }catch(e){ next("Anfrage nicht möglich"); }
+}
+window.addEventListener("online", function(){ wxRetryDelay=8000; fetchWeather(); });   // WLAN nach Boot da -> sofort holen
+document.addEventListener("visibilitychange", function(){ if(!document.hidden && Date.now()-wxLastOk>600000) fetchWeather(); });
+function renderWxMini(){
+  if(!wxData)return;
+  var w=wmo(wxData.current.weather_code), t=Math.round(wxData.current.temperature_2m);
+  document.getElementById("wxIc").textContent=w[0];
+  var tp=document.getElementById("wxTp"); tp.textContent=t+"°"; tp.style.color=tcol(t);
+  var lo=Math.round(wxData.daily.temperature_2m_min[0]), hi=Math.round(wxData.daily.temperature_2m_max[0]);
+  document.getElementById("wxCond").textContent=w[1]+" · "+hi+"°/"+lo+"°";
+  document.getElementById("wxCity").textContent=state.city;
+}
+function buildWeatherDetail(){
+  document.getElementById("wxdTitle").textContent="Wetter · "+state.city;
+  var hostH=document.getElementById("wxHours"); hostH.innerHTML="";
+  var host7=document.getElementById("wx7"); host7.innerHTML="";
+  if(!wxData){ hostH.innerHTML='<div class="empty">Keine Wetterdaten. Grund: '+wxLastReason+'<br>Aktive Koordinaten: '+(+state.lat).toFixed(4)+', '+(+state.lon).toFixed(4)+'</div>'; var s0=document.getElementById("wxSrc"); if(s0) s0.textContent=""; showScreen("weather"); return; }
+  var times=wxData.hourly.time, now=new Date(), startIdx=0;
+  for(var i=0;i<times.length;i++){ if(new Date(times[i])>=now){ startIdx=Math.max(0,i-1); break; } }
+  for(var k=startIdx;k<Math.min(startIdx+24,times.length);k++){
+    var dt=new Date(times[k]), w=wmo(wxData.hourly.weather_code[k]), tp=Math.round(wxData.hourly.temperature_2m[k]);
+    var pp=wxData.hourly.precipitation_probability?wxData.hourly.precipitation_probability[k]:null;
+    var el=document.createElement("div"); el.className="hour";
+    el.innerHTML='<div class="h">'+pad(dt.getHours())+':00</div><div class="i">'+w[0]+'</div><div class="t" style="color:'+tcol(tp)+'">'+tp+'°</div>'+(pp!=null?'<div class="p">💧'+pp+'%</div>':'');
+    hostH.appendChild(el);
+  }
+  var dt7=wxData.daily.time;
+  for(var j=0;j<dt7.length;j++){
+    var d=new Date(dt7[j]), w2=wmo(wxData.daily.weather_code[j]);
+    var mx=Math.round(wxData.daily.temperature_2m_max[j]), mn=Math.round(wxData.daily.temperature_2m_min[j]);
+    var pp2=wxData.daily.precipitation_probability_max?wxData.daily.precipitation_probability_max[j]:null;
+    var name=j===0?"Heute":(j===1?"Morgen":WD2[d.getDay()]+". "+d.getDate()+"."+(d.getMonth()+1)+".");
+    var row=document.createElement("div"); row.className="d7";
+    row.innerHTML='<span class="dn">'+name+'</span><span class="di">'+w2[0]+'</span><span class="dtemp"><span style="color:'+tcol(mx)+'">'+mx+'°</span> <span style="color:var(--low)">'+mn+'°</span></span><span class="dp">'+(pp2!=null?'💧'+pp2+'%':'')+'</span>';
+    host7.appendChild(row);
+  }
+  var srcEl=document.getElementById("wxSrc"); if(srcEl) srcEl.textContent="Quelle: "+(wxData._src||"Open-Meteo")+" · "+(+state.lat).toFixed(3)+", "+(+state.lon).toFixed(3);
+  showScreen("weather");
+}
+
+/* Geocoding: PLZ -> Zippopotam.us (DE), Ortsname -> Open-Meteo. Beide kostenlos, ohne Key, mit CORS. */
+function omGeoUrl(q){ return "https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(q)+"&count=1&language=de&format=json"; }
+function parseOmGeo(raw){ var r=raw&&raw.results&&raw.results[0]; if(!r) return null; return {lat:+r.latitude, lon:+r.longitude, name:(r.name||"")+(r.admin1?(", "+r.admin1):"")}; }
+function parseZippo(raw){ var p=raw&&raw.places&&raw.places[0]; if(!p) return null; return {lat:parseFloat(p.latitude), lon:parseFloat(p.longitude), name:(p["place name"]||"")+(p.state?(", "+p.state):"")}; }
+function geoXHR(url, parse, ok, fail){
+  try{
+    var x=new XMLHttpRequest(); x.open("GET",url,true); x.timeout=10000;
+    x.onreadystatechange=function(){ if(x.readyState!==4) return;
+      if(x.status>=200 && x.status<300){ try{ var r=parse(JSON.parse(x.responseText)); if(r && validLat(r.lat) && validLon(r.lon)) ok(r); else fail("nicht gefunden"); }catch(e){ fail("Parsing-Fehler"); } }
+      else if(x.status===404){ fail("nicht gefunden"); }
+      else { fail("Fehler "+(x.status||"?")); } };
+    x.ontimeout=function(){ fail("Zeitüberschreitung"); };
+    x.onerror=function(){ fail("kein Netz/blockiert"); };
+    x.send();
+  }catch(e){ fail("Anfrage nicht möglich"); }
+}
+function geocode(query, done){          // done(result|null, fehlermeldung)
+  query=(query||"").trim();
+  if(!query){ done(null,"Bitte PLZ oder Ort eingeben"); return; }
+  if(/^\d{4,5}$/.test(query)){          // sieht nach Postleitzahl aus
+    geoXHR("https://api.zippopotam.us/de/"+encodeURIComponent(query), parseZippo,
+      function(r){ done(r,null); },
+      function(){ geoXHR(omGeoUrl(query), parseOmGeo, function(r){ done(r,null); }, function(m){ done(null,m); }); });
+  } else {                              // Ortsname
+    geoXHR(omGeoUrl(query), parseOmGeo, function(r){ done(r,null); }, function(m){ done(null,m); });
+  }
+}
+
+/* screens */
+function showScreen(id){ ["hub","detail","weather"].forEach(function(s){ document.getElementById(s).classList.remove("active"); }); var el=document.getElementById(id); el.classList.add("active","fadein"); setTimeout(function(){el.classList.remove("fadein");},350); if(id==="hub") disarmLock(); }
+Array.prototype.forEach.call(document.querySelectorAll("[data-back]"),function(b){ b.onclick=function(){ showScreen("hub"); }; });
+var lockTimer=null, finanzOpen=false;
+function armLock(){ clearTimeout(lockTimer); lockTimer=setTimeout(function(){ showScreen("hub"); },90000); }
+function disarmLock(){ clearTimeout(lockTimer); finanzOpen=false; }
+document.getElementById("detail").addEventListener("touchstart",function(){ if(finanzOpen) armLock(); },{passive:true});
+document.getElementById("detail").addEventListener("click",function(){ if(finanzOpen) armLock(); });
+
+/* PIN */
+var pinEntry="";
+function openPinGate(){ pinEntry=""; document.getElementById("pinMsg").textContent=""; renderPinDots(); document.getElementById("pinScrim").classList.add("open"); }
+function closePinGate(){ document.getElementById("pinScrim").classList.remove("open"); pinEntry=""; }
+function renderPinDots(){ var n=(state.pin||"").length||4, box=document.getElementById("pinDots"); box.innerHTML=""; for(var k=0;k<n;k++){var d=document.createElement("i"); if(k<pinEntry.length)d.className="on"; box.appendChild(d);} }
+function buildPinPad(){ var pad=document.getElementById("pinPad"); pad.innerHTML=""; ["1","2","3","4","5","6","7","8","9","","0","⌫"].forEach(function(k){ var b=document.createElement("div"); if(k===""){b.className="pinkey empty";pad.appendChild(b);return;} b.className="pinkey"+(k==="⌫"?" fn":""); b.textContent=k; b.onclick=function(){pinPress(k);}; pad.appendChild(b); }); }
+function pinPress(k){ if(k==="⌫"){pinEntry=pinEntry.slice(0,-1);renderPinDots();return;} if(pinEntry.length>=(state.pin||"").length)return; pinEntry+=k; renderPinDots(); if(pinEntry.length===(state.pin||"").length) setTimeout(checkPin,120); }
+function checkPin(){ if(pinEntry===state.pin){ closePinGate(); finanzOpen=true; buildDetail("finanzen"); armLock(); } else { document.getElementById("pinMsg").textContent="Falscher PIN"; var b=document.getElementById("pinBox"); b.classList.add("shake"); setTimeout(function(){b.classList.remove("shake");},420); pinEntry=""; renderPinDots(); } }
+document.getElementById("pinCancel").onclick=closePinGate;
+document.getElementById("pinScrim").onclick=function(e){ if(e.target===this) closePinGate(); };
+
+/* editor */
+function openEditor(){
+  document.getElementById("e_city").value=state.city;
+  document.getElementById("e_place").value=state.city||""; document.getElementById("e_geoMsg").textContent="";
+  document.getElementById("e_lat").value=state.lat; document.getElementById("e_lon").value=state.lon;
+  document.getElementById("e_h").value=state.height; document.getElementById("e_w").value=state.weight;
+  document.getElementById("e_age").value=state.age; document.getElementById("e_sex").value=state.sex;
+  document.getElementById("e_act").value=String(state.activity); document.getElementById("e_adj").value=state.adj;
+  document.getElementById("e_notes").value=state.notes||"";
+  document.getElementById("e_quotes").value=state.quotes||"";
+  document.getElementById("e_bVal").value=state.bVal; document.getElementById("e_bThr").value=state.bThr; document.getElementById("e_pin").value=state.pin||"";
+  renderFoodList(); renderTodoList(); document.getElementById("scrim").classList.add("open");
+}
+function closeEditor(){ document.getElementById("scrim").classList.remove("open"); }
+function renderFoodList(){ var box=document.getElementById("e_foodlist"); box.innerHTML=""; var t=todayStr(); var list=state.food.filter(function(f){return (f.date||t)===t;}); if(!list.length){box.innerHTML='<div class="rl" style="color:var(--low)">Heute noch nichts.</div>';return;} list.forEach(function(f){ var r=document.createElement("div"); r.className="rl"; r.innerHTML='<span class="a">'+(f.time||"—")+'</span><span class="b">'+esc(f.item)+'</span><span class="a">'+(+f.kcal||0)+'</span>'; var x=document.createElement("button"); x.className="btn danger mini2"; x.textContent="✕"; x.onclick=function(){state.food=state.food.filter(function(z){return z!==f;});renderFoodList();}; r.appendChild(x); box.appendChild(r); }); }
+function renderTodoList(){ var box=document.getElementById("e_todolist"); box.innerHTML=""; var t=todayStr(); var list=state.todos.filter(function(x){return (x.date||t)===t;}); if(!list.length){box.innerHTML='<div class="rl" style="color:var(--low)">Keine Aufgaben.</div>';return;} list.forEach(function(x){ var r=document.createElement("div"); r.className="rl"; r.innerHTML='<span class="a">'+(x.time||"—")+'</span><span class="b">'+esc(x.text)+'</span>'; var del=document.createElement("button"); del.className="btn danger mini2"; del.textContent="✕"; del.onclick=function(){state.todos=state.todos.filter(function(z){return z!==x;});renderTodoList();}; r.appendChild(del); box.appendChild(r); }); }
+document.getElementById("e_fAdd").onclick=function(){ var i=document.getElementById("e_fI").value.trim(); if(!i)return; state.food.push({date:todayStr(),time:document.getElementById("e_fT").value||"",item:i,kcal:+document.getElementById("e_fK").value||0}); document.getElementById("e_fI").value="";document.getElementById("e_fK").value="";renderFoodList(); };
+document.getElementById("e_tAdd").onclick=function(){ var x=document.getElementById("e_tX").value.trim(); if(!x)return; state.todos.push({date:todayStr(),time:document.getElementById("e_tT").value||"",text:x,done:false}); document.getElementById("e_tX").value="";renderTodoList(); };
+function saveAll(){
+  state.city=document.getElementById("e_city").value.trim()||"Straelen";
+  var nlat=parseFloat(document.getElementById("e_lat").value), nlon=parseFloat(document.getElementById("e_lon").value);
+  if(validLat(nlat)) state.lat=nlat;        // ungültige Werte werden ignoriert (alter Wert bleibt)
+  if(validLon(nlon)) state.lon=nlon;
+  state.height=+document.getElementById("e_h").value||state.height;
+  state.weight=+document.getElementById("e_w").value||state.weight;
+  state.age=+document.getElementById("e_age").value||state.age;
+  state.sex=document.getElementById("e_sex").value;
+  state.activity=+document.getElementById("e_act").value||1.375;
+  state.adj=+document.getElementById("e_adj").value||0;
+  state.notes=document.getElementById("e_notes").value;
+  state.quotes=document.getElementById("e_quotes").value;
+  state.bVal=parseFloat(document.getElementById("e_bVal").value)||0;
+  state.bThr=parseFloat(document.getElementById("e_bThr").value)||0;
+  state.pin=(document.getElementById("e_pin").value||"").replace(/\D/g,"").slice(0,6);
+  save(); renderHub(); showQuote(); fetchWeather(); closeEditor();
+}
+
+document.getElementById("gear").onclick=openEditor;
+document.getElementById("e_close").onclick=closeEditor;
+document.getElementById("e_save").onclick=saveAll;
+document.getElementById("e_geo").onclick=function(){
+  var msg=document.getElementById("e_geoMsg"); msg.style.color="var(--mid)"; msg.textContent="suche …";
+  geocode(document.getElementById("e_place").value, function(r, err){
+    if(r){
+      document.getElementById("e_lat").value=r.lat.toFixed(4);
+      document.getElementById("e_lon").value=r.lon.toFixed(4);
+      if(r.name) document.getElementById("e_city").value=r.name.split(",")[0];
+      msg.style.color="var(--green)"; msg.textContent="✓ "+r.name+"  ("+r.lat.toFixed(3)+", "+r.lon.toFixed(3)+")";
+    } else {
+      msg.style.color="var(--red)"; msg.textContent="✗ "+(err||"nicht gefunden")+" – bitte lat/lon ggf. manuell eintragen";
+    }
+  });
+};
+document.getElementById("scrim").onclick=function(e){ if(e.target===this) closeEditor(); };
+document.getElementById("wxBtn").onclick=buildWeatherDetail;
+document.getElementById("finBtn").onclick=function(){ openDetail("finanzen"); };
+document.getElementById("tileUnreal").onclick=function(){ openDetail("unreal"); };
+document.getElementById("tileSport").onclick=function(){ openDetail("sport"); };
+document.getElementById("notesCard").onclick=openQuotes;   // Notizen-Karte -> Zitate verwalten
+document.getElementById("quoteBar").onclick=openQuotes;    // Leiste antippen -> Zitate verwalten
+document.getElementById("q_add").onclick=function(){
+  var v=document.getElementById("q_new").value.trim(); if(!v) return;
+  var arr=quoteList(); arr.push(v); state.quotes=arr.join("\n"); save();
+  document.getElementById("q_new").value=""; renderQuoteList(); showQuote();
+};
+document.getElementById("q_close").onclick=closeQuotes;
+document.getElementById("quoteScrim").onclick=function(e){ if(e.target===this) closeQuotes(); };
+
+function renderHub(){ renderClock(); renderCalories(); renderFin(); renderTodos(); renderNotes(); renderWxMini(); }
+buildPinPad();
+renderHub(); startQuotes(); fetchWeather();
+setInterval(renderClock,1000);
+setInterval(function(){ renderTodos(); renderCalories(); },60000);
+setInterval(fetchWeather,30*60*1000);
+</script>
+</body>
+</html>
