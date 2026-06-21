@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard · Kontrollzentrum</title>
+<style>
+  :root{
+    --bg:#11151c; --bg-2:#0c0f15; --card:#1a212b; --card-2:#161d26;
+    --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.15);
+    --hi:#eef2f6; --mid:#9aa7b4; --low:#5d6976;
+    --amber:#e8b14c; --green:#4ec58a; --blue:#5aa9e6; --purple:#b18be0; --red:#e8654e;
+    --mono: ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:
+      radial-gradient(1200px 700px at 85% -10%, rgba(232,177,76,.05), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(90,169,230,.05), transparent 60%),
+      var(--bg); color:var(--hi); font-family:var(--sans); min-height:100vh; padding:24px 18px 80px; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1120px; margin:0 auto;}
+  h1{font-size:20px; letter-spacing:.16em; text-transform:uppercase; color:var(--amber); font-weight:700; display:flex; align-items:center; gap:10px;}
+  h1 .ic{font-size:24px;}
+  .sub{color:var(--mid); font-size:13px; margin:6px 0 18px;}
+
+  .bar{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; background:linear-gradient(180deg,var(--card),var(--card-2)); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:8px;}
+  .bar .fld{flex:1; min-width:220px;}
+  .status{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--mid); padding:2px 0;}
+  .led{width:10px;height:10px;border-radius:50%; background:var(--low); box-shadow:0 0 8px transparent;}
+  .led.ok{background:var(--green); box-shadow:0 0 10px var(--green);}
+  .led.bad{background:var(--red); box-shadow:0 0 10px var(--red);}
+  .led.busy{background:var(--amber); box-shadow:0 0 10px var(--amber);}
+  .savebar{display:flex; gap:10px; align-items:center; justify-content:flex-end; flex-wrap:wrap; margin:0 0 18px; color:var(--mid); font-size:13px;}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:14px; align-items:start;}
+  .card{background:linear-gradient(180deg,var(--card),var(--card-2)); border:1px solid var(--line); border-radius:14px; padding:16px;}
+  .card.wide{grid-column:1 / -1;}
+  .card h2{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--amber); margin-bottom:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .badge{font-size:10px; letter-spacing:.06em; text-transform:none; color:var(--purple); border:1px solid rgba(177,139,224,.4); border-radius:999px; padding:2px 8px;}
+  label{font-size:12px; color:var(--mid); display:block; margin-bottom:5px;}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;}
+  .fld{display:flex; flex-direction:column; flex:1; min-width:90px;}
+  .fld.sm{flex:0 0 92px;}
+  input,select,textarea{background:var(--bg-2); border:1px solid var(--line-2); border-radius:9px; color:var(--hi); padding:9px 10px; font-size:15px; font-family:var(--sans); width:100%;}
+  textarea{min-height:120px; resize:vertical; line-height:1.45;}
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--amber);}
+  .btn{border:none; border-radius:9px; padding:9px 14px; font-size:14px; font-weight:600; cursor:pointer; font-family:var(--sans);}
+  .btn.primary{background:var(--amber); color:#21180a;}
+  .btn.ghost{background:rgba(255,255,255,.06); color:var(--hi); border:1px solid var(--line-2);}
+  .btn.mini{padding:8px 11px; font-size:13px;}
+  .btn.danger{background:rgba(232,101,78,.15); color:var(--red); border:1px solid rgba(232,101,78,.4);}
+  .btn:active{filter:brightness(1.15);}
+  .btn[disabled]{opacity:.4; cursor:not-allowed;}
+
+  .rowlist{display:flex; flex-direction:column; gap:7px; margin-bottom:10px;}
+  .rl{display:flex; align-items:center; gap:8px; background:var(--bg-2); border:1px solid var(--line); border-radius:9px; padding:6px 9px;}
+  .rl input{background:transparent; border:none; padding:3px 0; font-size:14px;}
+  .rl input.tm{flex:0 0 64px; font-family:var(--mono); color:var(--amber);}
+  .rl input.kc{flex:0 0 74px; font-family:var(--mono); color:var(--mid); text-align:right;}
+  .rl input.tx{flex:1;}
+  .rl .chk{flex:0 0 auto; width:20px; height:20px; accent-color:var(--green); cursor:pointer;}
+  .hint{font-size:12px; color:var(--low); margin-top:6px; line-height:1.4;}
+  .tog{display:flex; gap:8px; flex-wrap:wrap;}
+  .tg{flex:1; min-width:120px; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 8px; border-radius:11px; background:var(--bg-2); border:1px solid var(--line-2); color:var(--mid); font-size:15px; font-weight:600; cursor:pointer;}
+  .tg.on{color:#0c1a12;}
+  .tg .em{font-size:1.25em;}
+  .geomsg{font-size:12px; min-height:16px; margin:8px 0 2px; color:var(--mid);}
+  .footnote{color:var(--low); font-size:12px; margin-top:22px; line-height:1.5;}
+  .footnote code{font-family:var(--mono); color:var(--mid);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="ic">🎛️</span>Kontrollzentrum</h1>
+  <div class="sub">Notizen, To-Dos, Zitate &amp; mehr bequem vom PC pflegen — und mit dem Tablet-Dashboard (sowie optional Obsidian) synchronisieren.</div>
+
+  <div class="bar">
+    <div class="fld"><label>Server-Adresse (Raspberry Pi)</label><input id="api" placeholder="http://192.168.x.x:8080"></div>
+    <button class="btn primary" id="connect">Verbinden</button>
+    <button class="btn ghost" id="refresh">Aktualisieren</button>
+  </div>
+  <div class="savebar">
+    <div class="status"><span class="led" id="led"></span><span id="statusTxt">nicht verbunden</span></div>
+    <span style="flex:1"></span>
+    <button class="btn ghost mini" id="export">⬇ Export (JSON)</button>
+    <button class="btn ghost mini" id="importBtn">⬆ Import (JSON)</button>
+    <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+    <button class="btn primary" id="save">Speichern</button>
+  </div>
+
+  <div class="grid">
+    <div class="card wide">
+      <h2>Notizen <span class="badge" id="b_notes" style="display:none">↔ Obsidian</span></h2>
+      <label>Eine Zeile = ein Stichpunkt</label>
+      <textarea id="notes" placeholder="Stichpunkt 1&#10;Stichpunkt 2"></textarea>
+    </div>
+
+    <div class="card wide">
+      <h2>Zitate / Reminder <span class="badge" id="b_quotes" style="display:none">↔ Obsidian</span></h2>
+      <label>Eine Zeile = ein Eintrag (wechselt automatisch in der Leiste oben im Dashboard)</label>
+      <textarea id="quotes" placeholder="Wasser trinken 💧&#10;„Disziplin schlägt Motivation.“"></textarea>
+    </div>
+
+    <div class="card wide">
+      <h2>To-Do (heute) <span class="badge" id="b_todos" style="display:none">↔ Obsidian</span></h2>
+      <div class="rowlist" id="todoList"></div>
+      <div class="row">
+        <div class="fld sm"><label>Zeit</label><input type="time" id="t_time"></div>
+        <div class="fld"><label>Aufgabe</label><input id="t_text" placeholder="z. B. Rig finalisieren"></div>
+        <button class="btn primary mini" id="t_add">+ Hinzufügen</button>
+      </div>
+    </div>
+
+    <div class="card wide">
+      <h2>Essen heute</h2>
+      <div class="rowlist" id="foodList"></div>
+      <div class="row">
+        <div class="fld sm"><label>Zeit</label><input type="time" id="f_time"></div>
+        <div class="fld"><label>Gericht</label><input id="f_item" placeholder="z. B. Haferflocken"></div>
+        <div class="fld sm"><label>kcal</label><input id="f_kcal" inputmode="numeric"></div>
+        <button class="btn primary mini" id="f_add">+ Hinzufügen</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Heute erledigt</h2>
+      <div class="tog" id="habitTog"></div>
+      <div class="hint">Schaltet den heutigen Tag in der Übersicht. Den Verlauf der Vormonate pflegst du am Tablet.</div>
+    </div>
+
+    <div class="card">
+      <h2>Wetter-Ort</h2>
+      <div class="row">
+        <div class="fld"><label>PLZ oder Ort suchen</label><input id="place" placeholder="z. B. 47638 oder Straelen"></div>
+        <button class="btn primary mini" id="geo">Suchen</button>
+      </div>
+      <div class="geomsg" id="geomsg"></div>
+      <div class="row">
+        <div class="fld"><label>Anzeigename</label><input id="city"></div>
+        <div class="fld sm"><label>lat</label><input id="lat" inputmode="decimal"></div>
+        <div class="fld sm"><label>lon</label><input id="lon" inputmode="decimal"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Kalorien-Profil</h2>
+      <div class="row">
+        <div class="fld sm"><label>Größe (cm)</label><input id="height" inputmode="numeric"></div>
+        <div class="fld sm"><label>Gewicht (kg)</label><input id="weight" inputmode="decimal"></div>
+        <div class="fld sm"><label>Alter</label><input id="age" inputmode="numeric"></div>
+        <div class="fld sm"><label>Geschl.</label><select id="sex"><option value="m">m</option><option value="w">w</option></select></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="fld"><label>Aktivität</label><select id="activity">
+          <option value="1.2">kaum aktiv</option>
+          <option value="1.375">leicht (1–3×/Wo)</option>
+          <option value="1.55">mäßig (3–5×)</option>
+          <option value="1.725">sehr aktiv (6–7×)</option>
+          <option value="1.9">extrem aktiv</option>
+        </select></div>
+        <div class="fld sm"><label>Ziel (kcal/Tag)</label><input id="adj" inputmode="numeric"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Finanzen &amp; PIN</h2>
+      <div class="row">
+        <div class="fld"><label>Budget (€)</label><input id="bVal" inputmode="decimal"></div>
+        <div class="fld"><label>Warnschwelle (€)</label><input id="bThr" inputmode="decimal"></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="fld"><label>PIN (4–6 Ziffern, leer = aus)</label><input id="pin" inputmode="numeric" maxlength="6"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">
+    Die Server-Adresse wird lokal in diesem Browser gemerkt. „Speichern“ schreibt in die gemeinsame Datenbasis auf dem Pi; gekoppelte Felder landen zusätzlich in den Obsidian-Notizen.
+    Ohne Server kannst du per <code>Export/Import</code> eine <code>data.json</code> sichern bzw. einspielen.
+  </div>
+</div>
+
+<script>
+"use strict";
+var API = "";
+var data = {};
+var coupled = {};
+var dirty = false, saveTimer = null;
+
+var SCALAR = ["city","lat","lon","height","weight","age","sex","activity","adj","notes","quotes","bVal","bThr","pin"];
+var HABITS = [
+  {key:"sportDays", icon:"💪", name:"Sport", color:"--green"},
+  {key:"medDays", icon:"🧘", name:"Meditation", color:"--blue"},
+  {key:"journalDays", icon:"📓", name:"Journal", color:"--purple"},
+  {key:"unrealDays", icon:"🎮", name:"UNREAL", color:"--amber"}
+];
+function $(id){ return document.getElementById(id); }
+function pad(n){ return (n<10?"0":"")+n; }
+function todayStr(){ var d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function esc(t){ return (t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function setStatus(cls, txt){ var l=$("led"); l.className="led"+(cls?(" "+cls):""); $("statusTxt").textContent=txt; }
+function markDirty(){ dirty=true; if(API){ setStatus("busy","ungespeicherte Änderungen"); clearTimeout(saveTimer); saveTimer=setTimeout(saveToServer, 1400); } }
+
+/* ---------- Daten -> Formular ---------- */
+function fillForm(){
+  SCALAR.forEach(function(k){ var el=$(k); if(el) el.value=(data[k]!=null?data[k]:""); });
+  $("activity").value=String(data.activity||1.375);
+  renderTodos(); renderFood(); renderHabits();
+  ["notes","quotes","todos"].forEach(function(k){ var b=$("b_"+k); if(b) b.style.display=coupled[k]?"inline-block":"none"; });
+}
+function collectScalars(){
+  SCALAR.forEach(function(k){ var el=$(k); if(!el) return;
+    if(["lat","lon","height","weight","age","adj","bVal","bThr","activity"].indexOf(k)>=0){
+      var v=parseFloat(el.value); data[k]=isFinite(v)?v:data[k];
+    } else { data[k]=el.value; }
+  });
+  data.pin=(($("pin").value)||"").replace(/\D/g,"").slice(0,6);
+}
+
+/* ---------- To-Do ---------- */
+function renderTodos(){
+  var box=$("todoList"); box.innerHTML="";
+  var list=data.todos||(data.todos=[]);
+  if(!list.length){ box.innerHTML='<div class="rl" style="color:var(--low)">Noch keine Aufgaben.</div>'; return; }
+  list.forEach(function(t, i){
+    var r=document.createElement("div"); r.className="rl";
+    var chk=document.createElement("input"); chk.type="checkbox"; chk.className="chk"; chk.checked=!!t.done;
+    chk.onchange=function(){ t.done=chk.checked; markDirty(); };
+    var tm=document.createElement("input"); tm.type="time"; tm.className="tm"; tm.value=t.time||"";
+    tm.onchange=function(){ t.time=tm.value; markDirty(); };
+    var tx=document.createElement("input"); tx.className="tx"; tx.value=t.text||"";
+    tx.onchange=function(){ t.text=tx.value; markDirty(); };
+    var del=document.createElement("button"); del.className="btn danger mini"; del.textContent="✕";
+    del.onclick=function(){ data.todos.splice(i,1); renderTodos(); markDirty(); };
+    r.appendChild(chk); r.appendChild(tm); r.appendChild(tx); r.appendChild(del); box.appendChild(r);
+  });
+}
+$("t_add").onclick=function(){
+  var tx=$("t_text").value.trim(); if(!tx) return;
+  (data.todos||(data.todos=[])).push({date:todayStr(), time:$("t_time").value||"", text:tx, done:false});
+  $("t_text").value=""; $("t_time").value=""; renderTodos(); markDirty();
+};
+
+/* ---------- Essen ---------- */
+function renderFood(){
+  var box=$("foodList"); box.innerHTML="";
+  var list=data.food||(data.food=[]);
+  if(!list.length){ box.innerHTML='<div class="rl" style="color:var(--low)">Heute noch nichts.</div>'; return; }
+  list.forEach(function(f, i){
+    var r=document.createElement("div"); r.className="rl";
+    var tm=document.createElement("input"); tm.type="time"; tm.className="tm"; tm.value=f.time||"";
+    tm.onchange=function(){ f.time=tm.value; markDirty(); };
+    var it=document.createElement("input"); it.className="tx"; it.value=f.item||"";
+    it.onchange=function(){ f.item=it.value; markDirty(); };
+    var kc=document.createElement("input"); kc.className="kc"; kc.inputMode="numeric"; kc.value=(f.kcal!=null?f.kcal:"");
+    kc.onchange=function(){ var v=parseInt(kc.value,10); f.kcal=isFinite(v)?v:0; markDirty(); };
+    var del=document.createElement("button"); del.className="btn danger mini"; del.textContent="✕";
+    del.onclick=function(){ data.food.splice(i,1); renderFood(); markDirty(); };
+    r.appendChild(tm); r.appendChild(it); r.appendChild(kc); r.appendChild(del); box.appendChild(r);
+  });
+}
+$("f_add").onclick=function(){
+  var it=$("f_item").value.trim(); if(!it) return;
+  (data.food||(data.food=[])).push({date:todayStr(), time:$("f_time").value||"", item:it, kcal:parseInt($("f_kcal").value,10)||0});
+  $("f_item").value=""; $("f_kcal").value=""; $("f_time").value=""; renderFood(); markDirty();
+};
+
+/* ---------- Gewohnheiten heute ---------- */
+function renderHabits(){
+  var box=$("habitTog"); box.innerHTML=""; var t=todayStr();
+  HABITS.forEach(function(h){
+    var arr=data[h.key]||(data[h.key]=[]);
+    var on=arr.indexOf(t)>=0;
+    var b=document.createElement("div"); b.className="tg"+(on?" on":"");
+    if(on) b.style.background="var("+h.color+")";
+    b.innerHTML='<span class="em">'+h.icon+'</span>'+h.name+(on?" ✓":"");
+    b.onclick=function(){ var a=data[h.key]; var idx=a.indexOf(t); if(idx>=0)a.splice(idx,1); else a.push(t); renderHabits(); markDirty(); };
+    box.appendChild(b);
+  });
+}
+
+/* ---------- Geocoding (PLZ -> Zippopotam, Name -> Open-Meteo) ---------- */
+function omGeoUrl(q){ return "https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(q)+"&count=1&language=de&format=json"; }
+function parseOmGeo(raw){ var r=raw&&raw.results&&raw.results[0]; if(!r) return null; return {lat:+r.latitude, lon:+r.longitude, name:(r.name||"")+(r.admin1?(", "+r.admin1):"")}; }
+function parseZippo(raw){ var p=raw&&raw.places&&raw.places[0]; if(!p) return null; return {lat:parseFloat(p.latitude), lon:parseFloat(p.longitude), name:(p["place name"]||"")+(p.state?(", "+p.state):"")}; }
+function geoXHR(url, parse, ok, fail){
+  try{ var x=new XMLHttpRequest(); x.open("GET",url,true); x.timeout=10000;
+    x.onreadystatechange=function(){ if(x.readyState!==4) return;
+      if(x.status>=200&&x.status<300){ try{ var r=parse(JSON.parse(x.responseText)); if(r && isFinite(r.lat)&&isFinite(r.lon)) ok(r); else fail("nicht gefunden"); }catch(e){ fail("Parsing-Fehler"); } }
+      else if(x.status===404){ fail("nicht gefunden"); } else { fail("Fehler "+(x.status||"?")); } };
+    x.ontimeout=function(){ fail("Zeitüberschreitung"); }; x.onerror=function(){ fail("kein Netz/blockiert"); }; x.send();
+  }catch(e){ fail("Anfrage nicht möglich"); }
+}
+function geocode(q, done){
+  q=(q||"").trim(); if(!q){ done(null,"Bitte PLZ oder Ort eingeben"); return; }
+  if(/^\d{4,5}$/.test(q)){
+    geoXHR("https://api.zippopotam.us/de/"+encodeURIComponent(q), parseZippo, function(r){done(r,null);},
+      function(){ geoXHR(omGeoUrl(q), parseOmGeo, function(r){done(r,null);}, function(m){done(null,m);}); });
+  } else { geoXHR(omGeoUrl(q), parseOmGeo, function(r){done(r,null);}, function(m){done(null,m);}); }
+}
+$("geo").onclick=function(){
+  var msg=$("geomsg"); msg.style.color="var(--mid)"; msg.textContent="suche …";
+  geocode($("place").value, function(r, err){
+    if(r){ $("lat").value=r.lat.toFixed(4); $("lon").value=r.lon.toFixed(4); if(r.name)$("city").value=r.name.split(",")[0];
+      msg.style.color="var(--green)"; msg.textContent="✓ "+r.name+"  ("+r.lat.toFixed(3)+", "+r.lon.toFixed(3)+")"; markDirty();
+    } else { msg.style.color="var(--red)"; msg.textContent="✗ "+(err||"nicht gefunden"); }
+  });
+};
+
+/* ---------- Server ---------- */
+function api(){ return (API||"").replace(/\/+$/,""); }
+function loadFromServer(){
+  if(!api()){ setStatus("bad","keine Server-Adresse"); return; }
+  setStatus("busy","lade …");
+  var x=new XMLHttpRequest(); x.open("GET", api()+"/api/data", true); x.timeout=10000;
+  x.onreadystatechange=function(){ if(x.readyState!==4) return;
+    if(x.status>=200&&x.status<300){ try{ var d=JSON.parse(x.responseText); coupled=d._coupled||{}; delete d._coupled; data=d;
+        ["food","todos","sportDays","medDays","journalDays","unrealDays"].forEach(function(k){ if(!Array.isArray(data[k])) data[k]=[]; });
+        fillForm(); dirty=false; setStatus("ok","verbunden · geladen"); }catch(e){ setStatus("bad","ungültige Antwort"); } }
+    else { setStatus("bad","Fehler "+(x.status||"?")); } };
+  x.ontimeout=function(){ setStatus("bad","Zeitüberschreitung – Adresse/Netz prüfen"); };
+  x.onerror=function(){ setStatus("bad","nicht erreichbar (Adresse/Netz/CORS)"); };
+  x.send();
+}
+function saveToServer(){
+  clearTimeout(saveTimer);
+  if(!api()){ setStatus("bad","keine Server-Adresse – nutze Export"); return; }
+  collectScalars();
+  setStatus("busy","speichere …");
+  var x=new XMLHttpRequest(); x.open("POST", api()+"/api/data", true); x.timeout=10000;
+  x.setRequestHeader("Content-Type","application/json");
+  x.onreadystatechange=function(){ if(x.readyState!==4) return;
+    if(x.status>=200&&x.status<300){ dirty=false; setStatus("ok","gespeichert ✓ · Dashboard übernimmt es automatisch"); }
+    else { setStatus("bad","Speichern fehlgeschlagen ("+(x.status||"?")+")"); } };
+  x.ontimeout=function(){ setStatus("bad","Zeitüberschreitung beim Speichern"); };
+  x.onerror=function(){ setStatus("bad","nicht erreichbar beim Speichern"); };
+  x.send(JSON.stringify(data));
+}
+
+$("connect").onclick=function(){ API=$("api").value.trim(); try{ localStorage.setItem("hubCC_api", API); }catch(e){} loadFromServer(); };
+$("refresh").onclick=loadFromServer;
+$("save").onclick=saveToServer;
+
+/* Änderungen an Scalar-Feldern markieren */
+SCALAR.forEach(function(k){ var el=$(k); if(el) el.addEventListener("input", markDirty); });
+
+/* ---------- Import / Export ---------- */
+$("export").onclick=function(){
+  collectScalars();
+  var blob=new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+  var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="dashboard-data.json"; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+};
+$("importBtn").onclick=function(){ $("importFile").click(); };
+$("importFile").onchange=function(e){
+  var file=e.target.files&&e.target.files[0]; if(!file) return;
+  var rd=new FileReader();
+  rd.onload=function(){ try{ var d=JSON.parse(rd.result); delete d._coupled; data=d;
+      ["food","todos","sportDays","medDays","journalDays","unrealDays"].forEach(function(k){ if(!Array.isArray(data[k])) data[k]=[]; });
+      fillForm(); markDirty(); setStatus("busy","importiert – noch nicht gespeichert"); }catch(err){ setStatus("bad","Datei ungültig"); } };
+  rd.readAsText(file); e.target.value="";
+};
+
+/* ---------- Start ---------- */
+(function init(){
+  try{ API=localStorage.getItem("hubCC_api")||""; }catch(e){}
+  $("api").value=API;
+  // leeres Grundgerüst, falls (noch) kein Server
+  data={city:"Straelen",lat:51.4419,lon:6.2667,height:173,weight:115,age:30,sex:"m",activity:1.375,adj:0,
+        food:[],todos:[],notes:"",quotes:"",sportDays:[],medDays:[],journalDays:[],unrealDays:[],bVal:450,bThr:100,pin:"1234"};
+  fillForm();
+  if(API) loadFromServer(); else setStatus("","nicht verbunden – Adresse eingeben oder JSON importieren");
+})();
+</script>
+</body>
+</html>
