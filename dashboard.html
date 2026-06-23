@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dashboard</title>
+<style>
+  :root{
+    --bg:#11151c; --bg-2:#0c0f15; --card:#1a212b; --card-2:#161d26;
+    --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.14);
+    --hi:#eef2f6; --mid:#9aa7b4; --low:#5d6976;
+    --amber:#e8b14c; --green:#4ec58a; --blue:#5aa9e6; --purple:#b18be0; --red:#e8654e;
+    --mono: ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 85% -10%, rgba(232,177,76,.05), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(90,169,230,.05), transparent 60%),
+      var(--bg);
+    color:var(--hi); font-family:var(--sans); overflow:hidden;
+    -webkit-font-smoothing:antialiased; user-select:none; -webkit-tap-highlight-color:transparent;
+  }
+  .screen{height:100vh; padding:clamp(12px,2vh,24px); display:none; flex-direction:column; gap:clamp(10px,1.5vh,16px);}
+  .screen.active{display:flex;}
+  .fadein{animation:fade .3s ease both;}
+  @keyframes fade{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
+  @media (prefers-reduced-motion:reduce){.fadein{animation:none;}}
+
+  .card{background:linear-gradient(180deg,var(--card),var(--card-2)); border:1px solid var(--line); border-radius:16px; padding:clamp(12px,1.8vh,18px); min-height:0; position:relative; overflow:hidden;}
+  .lab{font-size:clamp(10px,1.4vh,13px); letter-spacing:.16em; text-transform:uppercase; color:var(--mid); font-weight:600; display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);}
+
+  .head{display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex:0 0 auto;}
+  .head .wd{font-size:clamp(13px,2.2vh,20px); letter-spacing:.22em; text-transform:uppercase; color:var(--amber); font-weight:600;}
+  .head .dt{font-size:clamp(11px,1.6vh,15px); color:var(--mid);}
+  .clock{font-family:var(--mono); font-size:clamp(30px,6.5vh,60px); font-weight:600; line-height:.9; font-variant-numeric:tabular-nums;}
+  .clock .s{color:var(--low); font-size:.45em; vertical-align:.18em;}
+  .pichip{display:flex; align-items:center; gap:6px; align-self:center; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; padding:6px 13px; font-family:var(--mono); font-size:clamp(12px,1.9vh,16px); color:var(--mid); cursor:pointer;}
+  .pichip:active{filter:brightness(1.25);}
+  .pichip .ic{font-size:1.15em;}
+
+  .toprow{display:grid; grid-template-columns:2.1fr 1fr 1fr; gap:clamp(10px,1.5vh,16px); flex:0 0 auto;}
+  .cal .big{display:flex; align-items:baseline; gap:10px;}
+  .cal .kcal{font-family:var(--mono); font-weight:700; font-size:clamp(30px,6vh,56px); line-height:1; font-variant-numeric:tabular-nums;}
+  #calCard{cursor:pointer; transition:transform .12s, filter .12s;}
+  #calCard:active{transform:scale(.985); filter:brightness(1.1);}
+  .cal .unit{font-size:clamp(13px,1.9vh,17px); color:var(--mid);}
+  .cal .sub{font-size:clamp(11px,1.6vh,14px); color:var(--low); margin-top:4px;}
+  .bar{height:7px; border-radius:4px; background:rgba(255,255,255,.08); margin-top:10px; overflow:hidden;}
+  .bar > i{display:block; height:100%; border-radius:4px; transition:width .5s ease;}
+
+  .mini{cursor:pointer; display:flex; flex-direction:column; transition:transform .12s, filter .12s;}
+  .mini:active{transform:scale(.97); filter:brightness(1.12);}
+  .wxmini{display:flex; align-items:center; gap:10px; margin-top:auto;}
+  .wxmini .ic{font-size:clamp(24px,4.4vh,38px);}
+  .wxmini .tp{font-family:var(--mono); font-size:clamp(22px,4vh,34px); font-variant-numeric:tabular-nums;}
+  .wxmini .cond{font-size:clamp(11px,1.5vh,13px); color:var(--mid);}
+  .finbtn .val{font-family:var(--mono); font-weight:700; font-size:clamp(22px,4.4vh,38px); margin-top:auto; font-variant-numeric:tabular-nums;}
+  .lockico{position:absolute; top:12px; right:14px; color:var(--amber); font-size:16px;}
+
+  .qbar{flex:0 0 auto; display:flex; align-items:center; justify-content:center; padding:clamp(9px,1.5vh,15px) clamp(16px,2vh,22px); text-align:center; cursor:pointer; overflow:visible;}
+  .qbar .qtext{font-size:clamp(14px,2.3vh,21px); font-weight:800; color:var(--amber); text-align:center; line-height:1.3; letter-spacing:.01em; text-shadow:0 0 10px rgba(232,177,76,.6), 0 0 24px rgba(232,177,76,.32); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; transition:opacity .45s ease;}
+
+  .midrow{display:grid; grid-template-columns:1fr 1fr; gap:clamp(10px,1.5vh,16px); flex:1 1 30%; min-height:0;}
+  .listbox{display:flex; flex-direction:column;}
+  .items{overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:7px;}
+  .todo{display:flex; align-items:center; gap:10px; padding:8px 10px; background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:10px; font-size:clamp(13px,1.9vh,16px); cursor:pointer;}
+  .todo .box{width:20px;height:20px;border-radius:6px;border:2px solid var(--line-2); flex:none; display:flex;align-items:center;justify-content:center; font-size:13px;}
+  .todo.done .box{background:var(--green); border-color:var(--green); color:#0c1a12;}
+  .todo.done .txt{text-decoration:line-through; color:var(--low);}
+  .todo .tm{font-family:var(--mono); color:var(--amber); font-size:.85em; min-width:3.1em;}
+  .todo .txt{flex:1;}
+  .note-li{display:flex; gap:9px; font-size:clamp(13px,1.9vh,16px); line-height:1.4; padding:3px 0;}
+  .note-li::before{content:"▸"; color:var(--purple); flex:none;}
+  .empty{color:var(--low); font-style:italic; font-size:clamp(12px,1.7vh,15px); padding:4px 0;}
+
+  .tilerow{display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:1fr; gap:clamp(10px,1.5vh,16px); flex:1 1 46%; min-height:0;}
+  .tile{position:relative; border-radius:18px; padding:clamp(14px,2.2vh,22px); display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; overflow:hidden; border:1px solid var(--line-2); background:linear-gradient(180deg,var(--card),var(--card-2)); transition:transform .12s, filter .12s;}
+  .tile:active{transform:scale(.985); filter:brightness(1.12);}
+  .tile .glow{position:absolute; inset:0; opacity:.16; background:radial-gradient(380px 240px at 80% 120%, var(--accent), transparent 70%); pointer-events:none;}
+  .tile .top{display:flex; align-items:center; justify-content:space-between;}
+  .tile .icon{font-size:clamp(24px,4.2vh,40px);}
+  .tile .chev{color:var(--low); font-size:clamp(20px,3.6vh,30px);}
+  .tile .title{font-size:clamp(17px,3.1vh,27px); font-weight:700; margin-top:auto; line-height:1.1;}
+  .tile .teaser{font-size:clamp(12px,1.7vh,15px); color:var(--mid); margin-top:4px;}
+  .tile .accentbar{height:5px; border-radius:4px; background:var(--accent); margin-top:10px; width:48px;}
+
+  .abar{display:flex; align-items:center; gap:14px; flex:0 0 auto;}
+  .back{display:flex; align-items:center; gap:9px; background:rgba(255,255,255,.06); border:1px solid var(--line-2); color:var(--hi); border-radius:14px; padding:11px 18px; font-size:clamp(14px,2vh,18px); font-weight:600; cursor:pointer;}
+  .back:active{filter:brightness(1.2);}
+  .atitle{display:flex; align-items:center; gap:12px; font-size:clamp(20px,4vh,36px); font-weight:700;}
+  .atitle .ai{font-size:clamp(26px,4.6vh,42px);}
+  .dcontent{flex:1; display:flex; flex-direction:column; gap:clamp(10px,1.5vh,16px); min-height:0; overflow-y:auto;}
+
+  /* Garten */
+  .gbedhead{display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:9px;}
+  .gbedname{font-weight:700; font-size:clamp(15px,2.4vh,20px);}
+  .gbadge{font-size:11px; padding:2px 9px; border-radius:999px; border:1px solid var(--line-2); color:var(--mid); white-space:nowrap;}
+  .gbadge.foil{color:var(--green); border-color:rgba(78,197,138,.5);}
+  .gbadge.open{color:var(--blue); border-color:rgba(90,169,230,.5);}
+  .gplan{display:flex; gap:6px; align-items:flex-start; overflow-x:auto; padding-bottom:4px;}
+  .glanecol{flex:1 1 0; min-width:80px; display:flex; flex-direction:column;}
+  .glanecol.rule{flex:none; min-width:24px; width:24px;}
+  .glanehd{font-size:11px; color:var(--mid); text-align:center; font-weight:600; height:18px; margin-bottom:5px; white-space:nowrap; overflow:hidden;}
+  .gcells{display:flex; flex-direction:column; gap:4px;}
+  .gslot{position:relative; border:1px solid var(--line); border-radius:7px; background:rgba(255,255,255,.045); cursor:pointer; overflow:hidden; display:flex; align-items:center; justify-content:center; color:#0c0f15; font-size:11px; font-weight:600;}
+  .gslab{display:flex; align-items:center; justify-content:center; gap:4px; overflow:hidden; white-space:nowrap; width:100%; padding:0 5px;}
+  .gslab>span{overflow:hidden; text-overflow:ellipsis;}
+  .gslot.empty{color:var(--low); font-weight:500;}
+  .gslot.ripe{box-shadow:inset 0 0 0 2px rgba(232,177,76,.85);}
+  .gslot.overdue{box-shadow:inset 0 0 0 2px rgba(232,101,78,.9);}
+  .gslot.good,.gsack.good{box-shadow:inset 0 0 0 2px var(--green);}
+  .gslot.conflict,.gsack.conflict{box-shadow:inset 0 0 0 2px var(--red);}
+  .gslot.bad,.gsack.bad{box-shadow:inset 0 0 0 2px var(--amber);}
+  .gslot.sel{outline:2px solid #fff; outline-offset:-2px;}
+  .grulecell{height:30px; display:flex; align-items:center; justify-content:flex-end; padding-right:3px; color:var(--low); font-size:10px; font-family:var(--mono);}
+  .gwalk{flex:none; width:26px; align-self:stretch; margin-top:23px; border-radius:7px; border:1px dashed var(--line-2); background:repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 8px, transparent 8px 16px); display:flex; align-items:center; justify-content:center;}
+  .gwalk span{writing-mode:vertical-rl; transform:rotate(180deg); font-size:9px; letter-spacing:.2em; color:var(--low); text-transform:uppercase;}
+  .gsackrow{display:flex; flex-wrap:wrap; gap:6px;}
+  .gsack{position:relative; display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:10px; font-weight:600; font-size:13px; color:#0c0f15; cursor:pointer;}
+  .gsack.empty{background:rgba(255,255,255,.03); border:1px dashed var(--line-2); color:var(--low);}
+  .gei{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-top:8px;}
+  .gmode{display:inline-flex; border:1px solid var(--line-2); border-radius:10px; overflow:hidden;}
+  .gmode button{background:transparent; border:none; color:var(--mid); padding:8px 14px; font-size:14px; font-weight:600; cursor:pointer; font-family:var(--sans);}
+  .gmode button.on{background:var(--amber); color:#21180a;}
+  .gctrl{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .gpal{display:flex; flex-wrap:wrap; gap:7px;}
+  .gpchip{display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border-radius:10px; border:1px solid var(--line-2); background:rgba(255,255,255,.04); color:var(--hi); font-size:13px; font-weight:600; cursor:pointer;}
+  .gpchip.on{background:var(--amber); color:#21180a; border-color:var(--amber);}
+  .gpdot{width:10px; height:10px; border-radius:50%; flex:none;}
+  .gwarn{display:flex; gap:9px; align-items:flex-start; font-size:clamp(12px,1.7vh,14px); padding:7px 10px; background:rgba(232,101,78,.1); border:1px solid rgba(232,101,78,.35); border-radius:9px; margin-bottom:6px;}
+  .gwarn .wi{color:var(--red); flex:none;}
+  .gwarn.amber{background:rgba(232,177,76,.1); border-color:rgba(232,177,76,.4);}
+  .gwarn.amber .wi{color:var(--amber);}
+  .gwtri{font-size:.85em; margin-left:4px; line-height:1;}
+  .tilewarn{font-size:17px; line-height:1;}
+  .gwtag{position:absolute; top:3px; right:3px; width:17px; height:17px; border-radius:50%; display:none; align-items:center; justify-content:center; font-size:12px; line-height:1; font-weight:800; pointer-events:auto; cursor:help; box-shadow:0 0 0 1.5px rgba(12,15,21,.55);}
+  .gtip{position:fixed; z-index:60; max-width:320px; max-height:82vh; overflow:hidden; background:var(--card); border:1px solid var(--line-2); border-radius:11px; padding:11px 13px; font-size:13px; line-height:1.5; color:var(--hi); box-shadow:0 10px 28px rgba(0,0,0,.5); pointer-events:none; display:none;}
+  .gtip .th{font-weight:700; margin-bottom:5px;}
+  .gtip.rot .th{color:#e0392c;}
+  .gtip.bad .th{color:#f4c20d;}
+  .gtip.care .th{color:#8fcdf3;}
+  .gtip b{color:var(--hi); font-weight:600;}
+  .gtip b{color:var(--hi); font-weight:600;}
+  .tp-li{color:var(--mid); line-height:1.45; margin-top:6px;}
+  .tp-li b{color:var(--hi); font-weight:600;}
+  .rg-gut,.rg-ideal{color:#5fbf7a; font-weight:600;}
+  .rg-mittel{color:#f0b429; font-weight:600;}
+  .rg-schlecht{color:#e0584c; font-weight:600;}
+  .wxrow{display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; margin-top:4px; font-size:12.5px; line-height:1.35;}
+  .wxrow .wxd{min-width:62px; color:var(--hi);}
+  .wxrow .wxt{color:var(--mid); font-variant-numeric:tabular-nums; min-width:78px;}
+  .wxrow .wxw{color:var(--low); font-size:11.5px;}
+  .tp-sub{color:var(--low); font-size:11px; margin-top:5px; line-height:1.35;}
+  .gpopback{position:fixed; inset:0; z-index:61; background:rgba(5,7,10,.3);}
+  .gpop{position:fixed; z-index:62; width:min(340px,92vw); max-height:82vh; overflow-y:auto; background:var(--card); border:1px solid var(--line-2); border-radius:16px; padding:16px; box-shadow:0 16px 40px rgba(0,0,0,.55);}
+  .gpopx{position:absolute; top:8px; right:10px; background:rgba(255,255,255,.06); border:1px solid var(--line-2); color:var(--mid); border-radius:8px; width:30px; height:30px; font-size:14px; line-height:1; cursor:pointer;}
+  .gpopx:active{filter:brightness(1.25);}
+  .gwtag.rot{background:#e0392c; color:#fff;}
+  .gwtag.bad{background:#f4c20d; color:#2a2104;}
+  .gwtag.care{background:rgba(12,15,21,.72); color:#8fcdf3;}
+  .gwtag svg{display:block;}
+  .gstat{border-radius:11px; padding:10px 12px; margin-top:10px; font-size:clamp(12px,1.7vh,14px);}
+  .gstat.ok{background:rgba(78,197,138,.12); border:1px solid rgba(78,197,138,.4);}
+  .gstat.warn{background:rgba(232,177,76,.12); border:1px solid rgba(232,177,76,.45);}
+  .gstat.warn.rot{background:rgba(232,101,78,.12); border-color:rgba(232,101,78,.5);}
+  .gstat-h{font-weight:700; margin-bottom:2px;}
+  .gstat.ok .gstat-h{color:var(--green);}
+  .gstat.warn .gstat-h{color:#f4c20d;}
+  .gstat.warn.rot .gstat-h{color:#e0392c;}
+  .gstat-li{color:var(--mid); line-height:1.45; margin-top:4px;}
+  .gleg2{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:8px; font-size:11px; color:var(--low);}
+  .gleg-i{display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; font-weight:800; font-size:10px; line-height:1;}
+  .gleg-i.rot{background:#e0392c; color:#fff;}
+  .gleg-i.bad{background:#f4c20d; color:#2a2104;}
+  .gleg-i.care{background:rgba(12,15,21,.72); color:#8fcdf3;}
+
+  /* single-habit calendar heatmap (UNREAL) */
+  .hmnav{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .hmnav .mlabel{font-size:clamp(15px,2.4vh,20px); font-weight:600;}
+  .hmnav button{background:rgba(255,255,255,.06); border:1px solid var(--line-2); color:var(--hi); border-radius:10px; padding:8px 16px; font-size:18px; cursor:pointer;}
+  .hmnav button:active{background:var(--amber); color:#21180a;}
+  .hmgrid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+  .hmgrid .wdh{text-align:center; font-size:clamp(9px,1.3vh,12px); color:var(--low); text-transform:uppercase; padding-bottom:2px;}
+  .hmcell{aspect-ratio:1/1; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:clamp(11px,1.7vh,15px); font-family:var(--mono); border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--mid);}
+  .hmcell.done{background:var(--green); color:#0c1a12; border-color:var(--green); font-weight:600;}
+  .hmcell.miss{background:rgba(232,101,78,.85); color:#1a0c0a; border-color:var(--red); font-weight:600;}
+  .hmcell.future{opacity:.35;}
+  .hmcell.tap{cursor:pointer;}
+  .hmcell.today{outline:2px solid var(--amber); outline-offset:1px;}
+  .hmcell.blank{background:transparent; border:none;}
+
+  /* multi-habit toggles + matrix (Sport) */
+  .htoggles{display:flex; gap:10px; flex-wrap:wrap;}
+  .htog{flex:1; min-width:110px; display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 10px; border-radius:13px; background:rgba(255,255,255,.05); border:1px solid var(--line-2); color:var(--mid); font-size:clamp(14px,2vh,17px); font-weight:600; cursor:pointer;}
+  .htog .em{font-size:1.3em;}
+  .htog.on{color:#0c1a12;}
+  .htog:active{filter:brightness(1.1);}
+  .matrix{display:grid; column-gap:4px; row-gap:10px; overflow-x:auto; margin-bottom:10px;}
+  .mx-h{font-size:9px; color:var(--low); text-align:center; align-self:end;}
+  .mx-lbl{font-size:clamp(12px,1.7vh,14px); display:flex; align-items:center; gap:7px; white-space:nowrap; padding-right:8px;}
+  .mx-cell{border-radius:5px; background:rgba(255,255,255,.05); border:1px solid var(--line); cursor:pointer; min-height:26px;}
+  .mx-cell.on{border:none;}
+  .mx-cell.future{opacity:.3; cursor:default;}
+  .mx-cell.today{outline:2px solid var(--amber); outline-offset:1px;}
+
+  .foodrow{display:flex; align-items:center; gap:12px; padding:8px 11px; background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:10px; font-size:clamp(13px,1.9vh,16px);}
+  .foodrow .tm{font-family:var(--mono); color:var(--amber); min-width:3.1em;}
+  .foodrow .it{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .foodrow .kc{font-family:var(--mono); color:var(--mid);}
+  .bigval{font-family:var(--mono); font-weight:600; font-size:clamp(30px,6vh,56px); font-variant-numeric:tabular-nums;}
+  .hint2{font-size:clamp(11px,1.5vh,13px); color:var(--low); margin-top:8px;}
+
+  /* weather detail */
+  .wxtop{flex:0 0 auto; display:flex; flex-direction:column;}
+  .hours{display:flex; gap:8px; overflow-x:auto; padding-bottom:6px;}
+  .hour{flex:0 0 auto; width:clamp(64px,9vh,86px); text-align:center; background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:12px; padding:10px 4px;}
+  .hour .h{font-family:var(--mono); font-size:clamp(11px,1.6vh,14px); color:var(--mid);}
+  .hour .i{font-size:clamp(20px,3.4vh,30px); margin:3px 0;}
+  .hour .t{font-family:var(--mono); font-size:clamp(13px,1.9vh,16px);}
+  .hour .p{font-size:clamp(10px,1.4vh,12px); color:var(--blue);}
+  .wxbot{flex:1 1 auto; min-height:0; display:flex; flex-direction:column;}
+  .days7{display:flex; flex-direction:column; gap:7px; overflow-y:auto;}
+  .d7{display:grid; grid-template-columns:1.4fr .6fr 1fr 1fr; align-items:center; gap:10px; background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:11px; padding:9px 14px; font-size:clamp(13px,1.9vh,16px);}
+  .d7 .dn{font-weight:600;}
+  .d7 .di{font-size:clamp(20px,3.2vh,28px); text-align:center;}
+  .d7 .dtemp{font-family:var(--mono);}
+  .d7 .dp{font-family:var(--mono); color:var(--blue); text-align:right; font-size:.9em;}
+  .wxsrc{flex:0 0 auto; font-size:11px; color:var(--low); text-align:right; padding:2px 4px;}
+
+  .gear{position:fixed; top:8px; right:8px; width:42px; height:42px; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--mid); font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:30; opacity:.4;}
+  .gear:active{opacity:1;}
+  .offline{position:fixed; bottom:6px; left:12px; font-size:12px; color:var(--red); opacity:.85; display:none;}
+
+  .scrim{position:fixed; inset:0; background:rgba(5,7,10,.72); backdrop-filter:blur(4px); z-index:40; display:none; align-items:center; justify-content:center; padding:16px;}
+  .scrim.open{display:flex;}
+  .pinbox{width:min(360px,92vw); background:var(--card); border:1px solid var(--line-2); border-radius:22px; padding:24px; text-align:center;}
+  .pintitle{font-size:21px; font-weight:700; margin-bottom:4px;}
+  .pinhint{font-size:13px; color:var(--mid); margin-bottom:14px;}
+  .pindots{display:flex; gap:13px; justify-content:center; margin-bottom:8px; height:15px;}
+  .pindots i{width:13px;height:13px;border-radius:50%;border:2px solid var(--line-2);display:block;}
+  .pindots i.on{background:var(--amber);border-color:var(--amber);}
+  .pinmsg{height:17px; color:var(--red); font-size:13px; margin-bottom:10px;}
+  .pinpad{display:grid; grid-template-columns:repeat(3,1fr); gap:11px; margin-bottom:12px;}
+  .pinkey{padding:17px 0; border-radius:13px; background:var(--bg-2); border:1px solid var(--line-2); color:var(--hi); font-size:23px; font-family:var(--mono); cursor:pointer;}
+  .pinkey:active{background:var(--amber); color:#21180a;}
+  .pinkey.empty{background:transparent; border:none;}
+  .pinkey.fn{font-size:19px; color:var(--mid);}
+  .shake{animation:shk .4s;}
+  @keyframes shk{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
+
+  .editor{width:min(660px,95vw); max-height:92vh; overflow-y:auto; background:var(--card); border:1px solid var(--line-2); border-radius:20px; padding:20px;}
+  .editor h2{font-size:18px; margin-bottom:4px;}
+  .editor p.hint{font-size:13px; color:var(--mid); margin-bottom:14px;}
+  .fset{border-top:1px solid var(--line); padding:13px 0;}
+  .fset h3{font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--amber); margin-bottom:10px;}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;}
+  .fld{display:flex; flex-direction:column; gap:5px; flex:1; min-width:90px;}
+  .fld.sm{flex:0 0 80px;}
+  label{font-size:12px; color:var(--mid);}
+  input,select,textarea{background:var(--bg-2); border:1px solid var(--line-2); border-radius:10px; color:var(--hi); padding:10px 11px; font-size:16px; font-family:var(--sans); width:100%;}
+  textarea{min-height:84px; resize:vertical; line-height:1.4;}
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--amber);}
+  .btn{border:none; border-radius:10px; padding:10px 15px; font-size:15px; font-weight:600; cursor:pointer; font-family:var(--sans);}
+  .btn.primary{background:var(--amber); color:#21180a;}
+  .btn.ghost{background:rgba(255,255,255,.06); color:var(--hi); border:1px solid var(--line-2);}
+  .btn.mini2{padding:9px 12px; font-size:14px;}
+  .btn.danger{background:rgba(232,101,78,.15); color:var(--red); border:1px solid rgba(232,101,78,.4);}
+  .rowlist{display:flex; flex-direction:column; gap:7px; margin-bottom:10px;}
+  .rl{display:flex; align-items:center; gap:9px; background:var(--bg-2); border:1px solid var(--line); border-radius:9px; padding:7px 10px; font-size:14px;}
+  .rl .a{font-family:var(--mono); color:var(--amber); font-size:13px;}
+  .rl .b{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .foot{display:flex; gap:10px; justify-content:flex-end; padding-top:14px; border-top:1px solid var(--line); margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="gear" id="gear">⚙</div>
+<div class="offline" id="offline">Wetter offline</div>
+
+<!-- HUB -->
+<div class="screen active" id="hub">
+  <div class="head">
+    <div><div class="wd" id="wd">—</div><div class="dt" id="dt">—</div></div>
+    <div class="pichip" id="piChip"><span class="ic">🍓</span><span id="piTemp">–°</span></div>
+    <div class="clock" id="clock">--:--<span class="s">--</span></div>
+  </div>
+  <div class="toprow">
+    <div class="card cal" id="calCard">
+      <div class="lab"><span class="dot" id="calDot"></span>Kalorien-Budget heute<span style="margin-left:auto;color:var(--low);font-size:.85em;letter-spacing:0;text-transform:none;">Woche ›</span></div>
+      <div class="big"><span class="kcal" id="calLeft">–</span><span class="unit" id="calUnit">kcal übrig</span></div>
+      <div class="sub" id="calSub">—</div>
+      <div class="bar"><i id="calBar"></i></div>
+    </div>
+    <div class="card mini" id="wxBtn">
+      <div class="lab"><span class="dot" style="--accent:var(--blue)"></span><span id="wxCity">Wetter</span></div>
+      <div class="wxmini"><span class="ic" id="wxIc">·</span><span class="tp" id="wxTp">–°</span></div>
+      <div class="cond" id="wxCond">lädt …</div>
+    </div>
+    <div class="card mini finbtn" id="finBtn">
+      <div class="lockico">🔒</div>
+      <div class="lab"><span class="dot" style="--accent:var(--green)"></span>Finanzen</div>
+      <div class="val" id="finVal">•••</div>
+    </div>
+  </div>
+  <div class="card qbar" id="quoteBar">
+    <span class="qtext" id="quoteText">—</span>
+  </div>
+  <div class="midrow">
+    <div class="card listbox">
+      <div class="lab"><span class="dot" style="--accent:var(--amber)"></span>Heute · To-Do</div>
+      <div class="items" id="todoBox"></div>
+    </div>
+    <div class="card listbox" id="notesCard">
+      <div class="lab"><span class="dot" style="--accent:var(--purple)"></span>Notizen</div>
+      <div class="items" id="notesBox"></div>
+    </div>
+  </div>
+  <div class="tilerow">
+    <div class="tile" id="tileUnreal" style="--accent:var(--amber)">
+      <div class="glow"></div>
+      <div class="top"><span class="icon">🎮</span><span class="chev">›</span></div>
+      <div><div class="title">UNREAL</div><div class="teaser">3D-Arbeit · Heatmap</div><div class="accentbar"></div></div>
+    </div>
+    <div class="tile" id="tileSport" style="--accent:var(--green)">
+      <div class="glow"></div>
+      <div class="top"><span class="icon">💪</span><span class="chev">›</span></div>
+      <div><div class="title">Gesundheit & Sport</div><div class="teaser">Sport · Meditation · Journal</div><div class="accentbar"></div></div>
+    </div>
+    <div class="tile" id="tileGarten" style="--accent:var(--green)">
+      <div class="glow"></div>
+      <div class="top"><span class="icon">🌱</span><span style="display:flex;align-items:center;gap:8px"><span class="tilewarn" id="gartenWarn" style="display:none">⚠️</span><span class="chev">›</span></span></div>
+      <div><div class="title">GARTEN</div><div class="teaser">folgt</div><div class="accentbar"></div></div>
+    </div>
+    <div class="tile" id="tileShameforest" style="--accent:var(--purple)">
+      <div class="glow"></div>
+      <div class="top"><span class="icon">🌲</span><span class="chev">›</span></div>
+      <div><div class="title">SHAMEFOREST</div><div class="teaser">folgt</div><div class="accentbar"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div class="screen" id="detail">
+  <div class="abar">
+    <button class="back" data-back>← Zurück</button>
+    <div class="atitle"><span class="ai" id="dIcon">·</span><span id="dTitle">—</span></div>
+  </div>
+  <div class="dcontent" id="dContent"></div>
+</div>
+
+<!-- WEATHER -->
+<div class="screen" id="weather">
+  <div class="abar">
+    <button class="back" data-back>← Zurück</button>
+    <div class="atitle"><span class="ai">🌍</span><span id="wxdTitle">Wetter</span></div>
+  </div>
+  <div class="card wxtop">
+    <div class="lab"><span class="dot" style="--accent:var(--blue)"></span>Heute · stündlich</div>
+    <div class="hours" id="wxHours"></div>
+  </div>
+  <div class="card wxbot">
+    <div class="lab"><span class="dot" style="--accent:var(--blue)"></span>7 Tage</div>
+    <div class="days7" id="wx7"></div>
+  </div>
+  <div class="wxsrc" id="wxSrc"></div>
+</div>
+
+<!-- PIN -->
+<div class="scrim" id="pinScrim">
+  <div class="pinbox" id="pinBox">
+    <div class="pintitle">🔒 Finanzen</div>
+    <div class="pinhint">PIN eingeben</div>
+    <div class="pindots" id="pinDots"></div>
+    <div class="pinmsg" id="pinMsg"></div>
+    <div class="pinpad" id="pinPad"></div>
+    <button class="btn ghost" id="pinCancel" style="width:100%">Abbrechen</button>
+  </div>
+</div>
+
+<!-- EDITOR -->
+<div class="scrim" id="scrim">
+  <div class="editor">
+    <h2>Bearbeiten</h2>
+    <p class="hint">Lokal gespeichert. Später kommen die Inhalte automatisch aus Obsidian.</p>
+    <div class="fset"><h3>Wetter-Ort</h3>
+      <div class="row">
+        <div class="fld"><label>PLZ oder Ort suchen</label><input id="e_place" placeholder="z. B. 47638 oder Straelen"></div>
+        <button class="btn primary mini2" id="e_geo">Suchen</button>
+      </div>
+      <div id="e_geoMsg" style="font-size:12px;color:var(--mid);min-height:16px;margin:7px 0 2px;"></div>
+      <div class="row">
+        <div class="fld"><label>Anzeigename</label><input id="e_city"></div>
+        <div class="fld sm"><label>lat</label><input id="e_lat" inputmode="decimal"></div>
+        <div class="fld sm"><label>lon</label><input id="e_lon" inputmode="decimal"></div>
+      </div>
+    </div>
+    <div class="fset"><h3>Kalorien-Profil</h3>
+      <div class="row">
+        <div class="fld sm"><label>Größe (cm)</label><input id="e_h" inputmode="numeric"></div>
+        <div class="fld sm"><label>Gewicht (kg)</label><input id="e_w" inputmode="decimal"></div>
+        <div class="fld sm"><label>Alter</label><input id="e_age" inputmode="numeric"></div>
+        <div class="fld sm"><label>Geschlecht</label><select id="e_sex"><option value="m">m</option><option value="w">w</option></select></div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="fld"><label>Aktivität</label><select id="e_act">
+          <option value="1.2">kaum aktiv</option>
+          <option value="1.375">leicht (1–3×/Wo)</option>
+          <option value="1.55">mäßig (3–5×)</option>
+          <option value="1.725">sehr aktiv (6–7×)</option>
+          <option value="1.9">extrem aktiv</option>
+        </select></div>
+        <div class="fld"><label>Ziel-Korrektur (kcal/Tag; 0 = halten, −300 = abnehmen)</label><input id="e_adj" inputmode="numeric"></div>
+      </div>
+    </div>
+    <div class="fset"><h3>Heute gegessen (Bereich Sport)</h3>
+      <div class="rowlist" id="e_foodlist"></div>
+      <div class="row">
+        <div class="fld sm"><label>Zeit</label><input type="time" id="e_fT"></div>
+        <div class="fld"><label>Gericht</label><input id="e_fI" placeholder="z. B. Haferflocken"></div>
+        <div class="fld sm"><label>kcal</label><input id="e_fK" inputmode="numeric"></div>
+        <button class="btn primary mini2" id="e_fAdd">+</button>
+      </div>
+    </div>
+    <div class="fset"><h3>Heute · To-Do</h3>
+      <div class="rowlist" id="e_todolist"></div>
+      <div class="row">
+        <div class="fld sm"><label>Zeit (optional)</label><input type="time" id="e_tT"></div>
+        <div class="fld"><label>Aufgabe</label><input id="e_tX" placeholder="z. B. Rig finalisieren"></div>
+        <button class="btn primary mini2" id="e_tAdd">+</button>
+      </div>
+    </div>
+    <div class="fset"><h3>Notizen (eine Zeile = ein Stichpunkt)</h3>
+      <textarea id="e_notes" placeholder="Stichpunkt 1&#10;Stichpunkt 2"></textarea>
+    </div>
+    <div class="fset"><h3>Zitate / Reminder (eine Zeile = ein Eintrag, wechselt automatisch)</h3>
+      <textarea id="e_quotes" placeholder="Wasser trinken 💧&#10;„Disziplin schlägt Motivation.“&#10;Kurz strecken"></textarea>
+    </div>
+    <div class="fset"><h3>Finanzen & PIN</h3>
+      <div class="row">
+        <div class="fld"><label>Budget (€)</label><input id="e_bVal" inputmode="decimal"></div>
+        <div class="fld"><label>Warnschwelle (€)</label><input id="e_bThr" inputmode="decimal"></div>
+        <div class="fld"><label>PIN (4–6 Ziffern, leer = aus)</label><input id="e_pin" inputmode="numeric" maxlength="6"></div>
+      </div>
+    </div>
+    <div class="fset"><h3>Kontrollzentrum / Server (optional)</h3>
+      <div class="row">
+        <div class="fld"><label>Adresse des Pi-Servers (leer = nur dieses Gerät)</label><input id="e_api" placeholder="http://192.168.x.x:8080"></div>
+      </div>
+      <div class="hint2" style="margin-top:8px;">Verbindet das Tablet mit dem Kontrollzentrum am PC. Notizen, To-Dos und Zitate werden dann von dort – und optional aus Obsidian – übernommen.</div>
+    </div>
+    <div class="foot">
+      <button class="btn ghost" id="e_close">Schließen</button>
+      <button class="btn primary" id="e_save">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- ZITATE / REMINDER -->
+<div class="scrim" id="quoteScrim">
+  <div class="editor" style="width:min(560px,95vw)">
+    <h2>Zitate / Reminder</h2>
+    <p class="hint">Diese Einträge wechseln automatisch in der Leiste oben. Antippen zum Ändern, ✕ zum Löschen. Später automatisch aus Obsidian.</p>
+    <div class="rowlist" id="q_list"></div>
+    <div class="row">
+      <div class="fld"><label>Neuer Eintrag</label><input id="q_new" placeholder="z. B. Wasser trinken 💧"></div>
+      <button class="btn primary mini2" id="q_add">+</button>
+    </div>
+    <div class="foot">
+      <button class="btn primary" id="q_close">Fertig</button>
+    </div>
+  </div>
+</div>
+
+<!-- GARTEN BEARBEITEN -->
+<div class="scrim" id="gScrim">
+  <div class="editor" style="width:min(720px,96vw)">
+    <h2>🌱 Garten bearbeiten</h2>
+    <p class="hint">Beete/Tunnel und Bahnen anlegen, Slot-Anzahl je Bahn festlegen und Bereiche mit einer Kultur füllen. Kultur und die drei Pflanzdaten je Box auch direkt in der Garten-Ansicht. Bahnen 1–2 = links, 3–4 = rechts. Lokal gespeichert; sobald der Pi-Server läuft, wird mit dem Kontrollzentrum synchronisiert.</p>
+    <div id="g_body"></div>
+    <div class="foot">
+      <button class="btn primary" id="g_close">Fertig</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+var mem={};
+function rawLoad(){ try{var s=localStorage.getItem("hub2");if(s)return JSON.parse(s);}catch(e){} try{if(mem.hub2)return JSON.parse(mem.hub2);}catch(e){} return null; }
+function save(){ var s=JSON.stringify(state); try{localStorage.setItem("hub2",s);}catch(e){mem.hub2=s;} schedulePush(); }
+
+// Basis-Kulturtabelle (metrisch, typische Werte – je Sorte anpassbar). Spiegelbild von crops.csv.
+var GARTEN_CROPS={
+  tomate:   {name:"Tomate",    emoji:"🍅", color:"#e8654e", rowCm:70,  plantCm:55,  maturity:75,  family:"Nachtschatten",  from:"transplant", zehrer:"Starkzehrer"},
+  paprika:  {name:"Paprika",   emoji:"🫑", color:"#d98a34", rowCm:60,  plantCm:45,  maturity:85,  family:"Nachtschatten",  from:"transplant", zehrer:"Starkzehrer"},
+  zucchini: {name:"Zucchini",  emoji:"🥒", color:"#6aa64f", rowCm:100, plantCm:90,  maturity:50,  family:"Kürbisgewächse", from:"transplant", zehrer:"Starkzehrer"},
+  gurke:    {name:"Gurke",     emoji:"🥗", color:"#4eae7a", rowCm:60,  plantCm:45,  maturity:55,  family:"Kürbisgewächse", from:"transplant", zehrer:"Starkzehrer"},
+  aubergine:{name:"Aubergine", emoji:"🍆", color:"#9b6fd0", rowCm:70,  plantCm:55,  maturity:90,  family:"Nachtschatten",  from:"transplant", zehrer:"Starkzehrer"},
+  cannabis: {name:"Cannabis",  emoji:"🌿", color:"#3fae6a", rowCm:120, plantCm:100, maturity:140, family:"Hanfgewächse",    from:"transplant", zehrer:"Starkzehrer"},
+  salat:    {name:"Salat",     emoji:"🥬", color:"#86c44e", rowCm:30,  plantCm:28,  maturity:50,  family:"Korbblütler",     from:"sow",        zehrer:"Schwachzehrer"},
+  porree:   {name:"Porree",    emoji:"🌱", color:"#6cc0a0", rowCm:30,  plantCm:15,  maturity:140, family:"Lauchgewächse",   from:"transplant", zehrer:"Mittelzehrer"},
+  zwiebel:  {name:"Zwiebel",   emoji:"🧅", color:"#c9a23a", rowCm:25,  plantCm:10,  maturity:120, family:"Lauchgewächse",   from:"set",        zehrer:"Mittelzehrer"},
+  knoblauch:{name:"Knoblauch", emoji:"🧄", color:"#cbb88a", rowCm:25,  plantCm:12,  maturity:240, family:"Lauchgewächse",   from:"set",        zehrer:"Schwachzehrer"},
+  melone:   {name:"Melone",    emoji:"🍈", color:"#7bbf63", rowCm:100, plantCm:90,  maturity:90,  family:"Kürbisgewächse", from:"transplant", zehrer:"Starkzehrer"}
+};
+var GCROP_KEYS=Object.keys(GARTEN_CROPS);
+// Vorkulturen, die nicht im Anbau-Set sind (für Fruchtfolge-Vergleich)
+var EXTRA_FAM={ "sellerie":"Doldenblütler", "melone":"Kürbisgewächse" };
+var EXTRA_NAME={ "sellerie":"Sellerie" };
+// Familien-Farben für Hinweise/Punkte
+var FAM_COLOR={ "Nachtschatten":"#b18be0", "Kürbisgewächse":"#5aa9e6", "Hanfgewächse":"#3fae6a", "Korbblütler":"#86c44e", "Lauchgewächse":"#e8b14c", "Doldenblütler":"#e8654e" };
+// Gute Nachbarn (Mischkultur, gängige Empfehlungen – Heuristik). Symmetrisch ausgewertet.
+var GARTEN_COMP_GOOD=[
+  ["tomate","salat"],["tomate","zwiebel"],["tomate","knoblauch"],["tomate","porree"],
+  ["paprika","salat"],["paprika","zwiebel"],["paprika","knoblauch"],
+  ["zucchini","salat"],["zucchini","zwiebel"],["zucchini","knoblauch"],
+  ["gurke","salat"],["gurke","zwiebel"],["gurke","knoblauch"],["gurke","porree"],
+  ["aubergine","salat"],["aubergine","zwiebel"],["aubergine","knoblauch"],
+  ["salat","zwiebel"],["salat","knoblauch"],["salat","porree"],
+  ["porree","zwiebel"],["porree","knoblauch"],
+  ["zwiebel","knoblauch"],
+  ["melone","salat"],["melone","zwiebel"]
+];
+var gGoodMap=(function(){ var m={}; GARTEN_COMP_GOOD.forEach(function(p){ (m[p[0]]=m[p[0]]||[]).push(p[1]); (m[p[1]]=m[p[1]]||[]).push(p[0]); }); return m; })();
+// Ungünstige Nachbarn (Heuristik). Symmetrisch ausgewertet.
+var GARTEN_COMP_BAD=[
+  ["tomate","gurke"],
+  ["gurke","zucchini"],
+  ["gurke","melone"],
+  ["zucchini","melone"]
+];
+var gBadMap=(function(){ var m={}; GARTEN_COMP_BAD.forEach(function(p){ (m[p[0]]=m[p[0]]||[]).push(p[1]); (m[p[1]]=m[p[1]]||[]).push(p[0]); }); return m; })();
+// Pflege/Standort je Kultur (kurz, für Gießkannen-Tooltip)
+var GARTEN_CARE={
+  tomate:   {standort:"vollsonnig, warm, geschützt; Regendach gegen Braunfäule", waerme:"Tag 18–26 °C optimal", nacht:"nachts ideal ≥12 °C; unter ~10 °C stockt das Wachstum; frostempfindlich", giessen:"im Sommer ~täglich bis jeden 2. Tag durchdringend, bodennah; sonst 2–3×/Woche – nie über die Blätter", duengen:"Starkzehrer – ab Fruchtansatz alle 1–2 Wochen, kaliumbetont", probleme:"Braunfäule: braune Blattflecken + grauer Belag, faulende Früchte (feuchtkühl) → lüften, trocken halten. Blütenendfäule: schwarzer Fleck am Fruchtende = Kalzium-/Wassermangel → gleichmäßig gießen. Gelbe untere Blätter = Nährstoffmangel."},
+  paprika:  {standort:"vollsonnig, sehr warm, windgeschützt", waerme:"Tag 20–28 °C", nacht:"nachts ≥15 °C ideal; unter ~12 °C Stress; sehr frostempfindlich", giessen:"2–3×/Woche, bei Hitze täglich; gleichmäßig, lauwarm, keine Staunässe", duengen:"Starkzehrer – alle 1–2 Wochen ab Fruchtansatz, kaliumbetont", probleme:"Sonnenbrand: helle, eingesunkene Fleckchen an Früchten bei praller Hitze. Blütenendfäule: schwarzer Fleck am Fruchtende = Kalziummangel. Blattläuse an eingerollten Triebspitzen."},
+  zucchini: {standort:"vollsonnig, nährstoffreich, viel Platz", waerme:"Tag 18–25 °C", nacht:"nachts ≥12 °C; frostempfindlich", giessen:"bei Hitze täglich, sonst alle 2–3 Tage reichlich, bodennah (nasse Blätter → Mehltau)", duengen:"Starkzehrer – alle ~2 Wochen; viel Kompost", probleme:"Echter Mehltau: weißer, mehliger Belag auf Blättern → luftig, nicht über Blätter gießen. Faulende kleine Früchte = mangelnde Bestäubung oder Wassermangel."},
+  gurke:    {standort:"warm, windgeschützt, hohe Luftfeuchte; sonnig bis halbschattig", waerme:"Tag 20–25 °C", nacht:"nachts ≥15 °C; unter ~12 °C Kälteschäden; sehr kälteempfindlich", giessen:"täglich bis jeden 2. Tag reichlich, nur handwarmes Wasser, nicht über Blätter", duengen:"Starkzehrer – alle 1–2 Wochen", probleme:"Mehltau: weißer Belag oder gelbe Flecken oben/grauer Belag unten → luftig, trocken. Bittere/welke Früchte = Kälte- oder Trockenstress. Spinnmilben (feine Gespinste) bei trockener Hitze."},
+  aubergine:{standort:"vollsonnig, sehr warm, geschützt", waerme:"Tag 22–28 °C", nacht:"nachts ≥16–18 °C ideal; sehr wärmebedürftig, frostempfindlich", giessen:"2–3×/Woche, bei Hitze täglich; gleichmäßig, warm gießen", duengen:"Starkzehrer – alle 1–2 Wochen ab Fruchtansatz", probleme:"Spinnmilben: gesprenkelte Blätter + feine Gespinste bei Hitze/Trockenheit → Luftfeuchte erhöhen. Blattläuse. Schlechter Fruchtansatz = zu kühl."},
+  cannabis: {standort:"vollsonnig, luftig", waerme:"Tag 20–28 °C", nacht:"nachts ≥12–15 °C; unter ~10 °C Stress; frostempfindlich", giessen:"wenn die obere Erde antrocknet (oft alle 1–3 Tage) durchdringend; keine Staunässe", duengen:"Starkzehrer – wöchentlich angepasst (Wachstum stickstoff-, Blüte phosphor-/kaliumbetont)", probleme:"Echter Mehltau (weißer Belag) und Knospenfäule/Botrytis (graue, faulende Blüten bei Feuchte) → luftig & trocken. Vergilbte Blätter = Stickstoffmangel, verbrannte Blattränder = Überdüngung. Spinnmilben."},
+  salat:    {standort:"sonnig bis halbschattig; im Hochsommer halbschattig (sonst Schossen)", waerme:"Tag 10–20 °C", nacht:"kühle Nächte ok, verträgt leichten Frost (bis ~−3 °C); warme Nächte fördern Schossen", giessen:"flach wurzelnd → lieber häufig & wenig, bei Hitze täglich, morgens", duengen:"Schwachzehrer – kaum nötig, etwas Kompost reicht", probleme:"Falscher Mehltau: gelbe Flecken oben, grauer Belag unten; Fäulnis am Strunk bei Nässe/Dichte → luftig, trocken, nicht zu eng. Bitter/Schossen = Hitze. Schnecken (Fraß + Schleimspuren)."},
+  porree:   {standort:"sonnig, tiefgründig; zum Bleichen anhäufeln", waerme:"robust, breite Spanne", nacht:"winterhart; verträgt Frost (sortenabhängig bis ~−15 °C)", giessen:"1–2×/Woche gründlich, gleichmäßig feucht", duengen:"Mittelzehrer – 1–2× pro Saison (z. B. beim Anhäufeln)", probleme:"Lauchmotte/Minierfliege: Fraßgänge, welke Herzblätter, Maden → Kulturschutznetz. Rost: orange Pusteln auf den Blättern → luftiger Stand."},
+  zwiebel:  {standort:"sonnig, durchlässig", waerme:"robust", nacht:"kälteverträglich; verträgt leichten Frost", giessen:"wenig, ~1×/Woche; gegen Erntereife einstellen", duengen:"Mittelzehrer – wenig; früh 1×, später kein Stickstoff", probleme:"Zwiebelfliege: Maden, welke gelbe Röhren, faulende Zwiebel → Netz, Fruchtfolge. Falscher Mehltau (graue Flecken). Hals-/Lagerfäule bei zu viel Stickstoff/Nässe."},
+  knoblauch:{standort:"sonnig, durchlässig", waerme:"robust", nacht:"winterhart; braucht Kältereiz, verträgt strengen Frost", giessen:"selten, nur bei Trockenheit; Staunässe meiden", duengen:"Schwachzehrer – kaum; evtl. 1× im Frühjahr", probleme:"Rost: orange Pusteln auf den Blättern → luftig. Weiß-/Fäulnis bei Staunässe (faulende Zehen, weißes Pilzgeflecht) → durchlässiger Boden, Fruchtfolge."},
+  melone:   {standort:"vollsonnig, sehr warm, geschützt (Tunnel/Gewächshaus)", waerme:"Tag 22–30 °C", nacht:"nachts ≥16–18 °C; sehr wärmebedürftig, frostempfindlich", giessen:"regelmäßig alle 2–3 Tage; gegen Reife reduzieren (mehr Süße), nicht über Blätter", duengen:"Starkzehrer – alle 1–2 Wochen, kaliumbetont ab Fruchtansatz", probleme:"Echter Mehltau: weißer Belag → luftig. Stängel-/Wurzelfäule bei Nässe. Fade oder wenige Früchte = zu wenig Wärme/Sonne."}
+};
+
+var DEFAULTS={
+  city:"Straelen", lat:51.4419, lon:6.2667,
+  height:173, weight:115, age:30, sex:"m", activity:1.375, adj:0,
+  food:[], todos:[], notes:"Beispiel-Stichpunkt\nNoch einer",
+  quotes:"Wasser trinken nicht vergessen 💧\n„Disziplin schlägt Motivation.“\nKurz aufstehen und strecken\nEin Schritt nach dem anderen",
+  sportDays:[], medDays:[], journalDays:[], unrealDays:[],
+  bVal:450, bThr:100, pin:"1234", apiBase:"",
+  finBalance:null, finCurrency:"EUR", finAccounts:[], finUpdated:"", finError:"", pi:null,
+  garten:{beds:[]}
+};
+function gSlot(c){ return {crop:c||"", sown:"", potted:"", planted:"", prev:""}; }
+function gRun(c,n){ var a=[]; for(var i=0;i<n;i++) a.push(gSlot(c)); return a; }
+function gPad(a,total){ while(a.length<total) a.push(gSlot("")); return a; }
+function gPrev(a,p){ a.forEach(function(s){ s.prev=p; }); return a; }
+DEFAULTS.garten={ beds:[
+  { id:"t1", name:"Folientunnel", cover:true, len:38, lanes:4, walkway:2, sun:"", note:"~halb belegt",
+    slots:[ gPrev(gPad(gRun("tomate",5),12),"paprika"),
+            gPad(gRun("gurke",5),12),
+            gPrev(gPad(gRun("paprika",4),12),"tomate"),
+            (function(){ var a=gPad(gRun("aubergine",3),9); a.push(gSlot("cannabis"),gSlot("cannabis"),gSlot("cannabis")); return a; })() ] },
+  { id:"t2", name:"Tunnel ohne Folie", cover:false, len:19, lanes:4, walkway:2, sun:"", note:"~wie draußen, sparsam belegt",
+    slots:[ gPrev(gPad(gRun("salat",2),5),"sellerie"),
+            gPad(gRun("knoblauch",2),5),
+            gPrev(gPad(gRun("porree",3),5),"melone"),
+            gPrev(gPad(gRun("porree",3),5),"melone") ] },
+  { id:"sack1", name:"Pflanzsack", kind:"sack", cover:false, len:1, lanes:1, walkway:0, sun:"", note:"",
+    slots:[ [gSlot("zwiebel")] ] }
+]};
+var state=Object.assign({},DEFAULTS,rawLoad()||{});
+["food","todos","sportDays","medDays","journalDays","unrealDays","finAccounts"].forEach(function(k){ if(!Array.isArray(state[k])) state[k]=[]; });
+if(typeof state.pin==="undefined") state.pin="1234";
+function validLat(v){ return typeof v==="number" && isFinite(v) && v>=-90 && v<=90; }
+function validLon(v){ return typeof v==="number" && isFinite(v) && v>=-180 && v<=180; }
+// Selbstheilung: falls früher ungültige Koordinaten gespeichert wurden (z. B. eine PLZ im lat-Feld), auf Standard zurücksetzen
+if(!validLat(+state.lat) || !validLon(+state.lon)){ state.lat=DEFAULTS.lat; state.lon=DEFAULTS.lon; if(!state.city) state.city=DEFAULTS.city; save(); }
+function gMigrateBed(bed){
+  if(!Array.isArray(bed.slots)){
+    var lanes=Math.max(1,+bed.lanes||1); var ls=[]; for(var i=0;i<lanes;i++) ls.push([]);
+    if(Array.isArray(bed.segs)){
+      bed.segs.forEach(function(s){
+        var ln=Math.max(1,+s.lane||1); while(ls.length<ln) ls.push([]);
+        var c=GARTEN_CROPS[s.crop], sp=(c&&c.plantCm)?c.plantCm:50;
+        var meters=Math.max(0,(+s.to||0)-(+s.from||0)), n=Math.max(1,Math.round(meters*100/sp));
+        for(var k=0;k<n;k++) ls[ln-1].push({crop:(s.crop||""), sown:"", potted:"", planted:(s.planted||"")});
+      });
+    }
+    bed.slots=ls; try{ delete bed.segs; }catch(e){}
+  }
+  var lanes2=Math.max(1,+bed.lanes||bed.slots.length||1); bed.lanes=lanes2;
+  while(bed.slots.length<lanes2) bed.slots.push([]);
+  if(bed.slots.length>lanes2) bed.slots.length=lanes2;
+  bed.slots.forEach(function(lane){ for(var i=0;i<lane.length;i++){ var s=lane[i]||{}; lane[i]={crop:(s.crop||""), sown:(s.sown||""), potted:(s.potted||""), planted:(s.planted||""), prev:(s.prev||"")}; } });
+  if(bed.walkway===undefined||bed.walkway===null) bed.walkway=(lanes2>=4?2:0);
+}
+function ensureGarten(){
+  if(state.garten===DEFAULTS.garten){ try{ state.garten=JSON.parse(JSON.stringify(DEFAULTS.garten)); }catch(e){ state.garten={beds:[]}; } }
+  if(!state.garten || typeof state.garten!=="object") state.garten={beds:[]};
+  if(!Array.isArray(state.garten.beds)) state.garten.beds=[];
+  state.garten.beds.forEach(gMigrateBed);
+}
+ensureGarten();
+
+var WD=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+var WD2=["So","Mo","Di","Mi","Do","Fr","Sa"];
+var WDH=["Mo","Di","Mi","Do","Fr","Sa","So"];
+var MO=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+function pad(n){return(n<10?"0":"")+n;}
+function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+function todayStr(){return ymd(new Date());}
+function isoWeek(d){ var x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); var dn=(x.getUTCDay()+6)%7; x.setUTCDate(x.getUTCDate()-dn+3); var f=new Date(Date.UTC(x.getUTCFullYear(),0,4)); var fn=(f.getUTCDay()+6)%7; f.setUTCDate(f.getUTCDate()-fn+3); return 1+Math.round((x-f)/6048e5); }
+function esc(t){return (t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function fmtEur(v){try{return new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(v);}catch(e){return "€"+Math.round(v);}}
+
+function renderClock(){
+  var d=new Date();
+  document.getElementById("wd").textContent=WD[d.getDay()];
+  document.getElementById("dt").textContent=d.getDate()+". "+MO[d.getMonth()]+" "+d.getFullYear()+" · KW "+isoWeek(d);
+  document.getElementById("clock").innerHTML=pad(d.getHours())+":"+pad(d.getMinutes())+'<span class="s">'+pad(d.getSeconds())+'</span>';
+}
+function tdee(){
+  var b=10*(+state.weight||0)+6.25*(+state.height||0)-5*(+state.age||0);
+  b += (state.sex==="w")? -161 : 5;
+  return Math.round(b*(+state.activity||1.2) + (+state.adj||0));
+}
+function eatenToday(){ var t=todayStr(),s=0; state.food.forEach(function(f){ if((f.date||t)===t) s+=(+f.kcal||0); }); return s; }
+function renderCalories(){
+  var target=tdee(), eaten=eatenToday(), left=target-eaten;
+  document.getElementById("calLeft").textContent=Math.abs(left);
+  document.getElementById("calUnit").textContent=(left<0)?"kcal zu viel":"kcal übrig";
+  document.getElementById("calSub").textContent=eaten+" von "+target+" kcal gegessen";
+  var cls=left<0?"--red":(left<target*0.15?"--amber":"--green");
+  var cl=document.getElementById("calLeft"); cl.style.color="var("+cls+")";
+  var dd=document.getElementById("calDot"); dd.style.setProperty("--accent","var("+cls+")"); dd.style.background="var("+cls+")";
+  var pct=target>0?Math.max(0,Math.min(100,(eaten/target)*100)):0;
+  var bar=document.getElementById("calBar"); bar.style.width=pct+"%"; bar.style.background="var("+cls+")";
+}
+function renderFin(){
+  var v=+state.bVal||0, thr=+state.bThr||0; var cls=v<=0?"--red":(v<thr?"--amber":"--green");
+  var el=document.getElementById("finVal"); el.textContent="•••"; el.style.color="var("+cls+")";
+  document.querySelector("#finBtn .lockico").style.display=(state.pin?"block":"none");
+}
+function renderTodos(){
+  var box=document.getElementById("todoBox"); box.innerHTML=""; var t=todayStr();
+  var list=state.todos.filter(function(x){return (x.date||t)===t;}).sort(function(a,b){return (a.time||"99").localeCompare(b.time||"99");});
+  if(!list.length){ box.innerHTML='<div class="empty">Nichts zu tun — frei für Fokusarbeit.</div>'; return; }
+  list.forEach(function(x){
+    var r=document.createElement("div"); r.className="todo"+(x.done?" done":"");
+    r.innerHTML='<span class="box">'+(x.done?"✓":"")+'</span>'+(x.time?'<span class="tm">'+x.time+'</span>':'')+'<span class="txt">'+esc(x.text)+'</span>';
+    r.onclick=function(){ x.done=!x.done; save(); renderTodos(); };
+    box.appendChild(r);
+  });
+}
+function renderNotes(){
+  var box=document.getElementById("notesBox"); box.innerHTML="";
+  var lines=(state.notes||"").split("\n").map(function(s){return s.trim();}).filter(Boolean);
+  if(!lines.length){ box.innerHTML='<div class="empty">Keine Notizen — über ⚙ befüllen.</div>'; return; }
+  lines.forEach(function(l){ var d=document.createElement("div"); d.className="note-li"; d.textContent=l; box.appendChild(d); });
+}
+
+/* rotierende Zitate / Reminder (eine Zeile = ein Eintrag, später aus Obsidian-Notiz) */
+var quoteIdx=0, quoteTimer=null;
+function quoteList(){ return (state.quotes||"").split("\n").map(function(s){return s.trim();}).filter(Boolean); }
+function showQuote(){
+  var el=document.getElementById("quoteText"), bar=document.getElementById("quoteBar"); if(!el||!bar) return;
+  var list=quoteList();
+  if(!list.length){ bar.style.display="none"; return; }
+  bar.style.display="flex";
+  if(quoteIdx>=list.length) quoteIdx=0;
+  var txt=list[quoteIdx]; quoteIdx++;
+  el.style.opacity="0";
+  setTimeout(function(){ el.textContent=txt; el.style.opacity="1"; }, 220);   // sanftes Überblenden
+}
+function startQuotes(){ clearInterval(quoteTimer); quoteIdx=0; showQuote(); quoteTimer=setInterval(showQuote, 15000); }
+
+/* Maske zum Verwalten der Zitate (löschen / ersetzen / hinzufügen) */
+function renderQuoteList(){
+  var box=document.getElementById("q_list"); box.innerHTML="";
+  var list=quoteList();
+  if(!list.length){ box.innerHTML='<div class="rl" style="color:var(--low)">Noch keine Zitate — unten hinzufügen.</div>'; return; }
+  list.forEach(function(txt, i){
+    var r=document.createElement("div"); r.className="rl";
+    var inp=document.createElement("input");
+    inp.value=txt; inp.style.flex="1"; inp.style.background="transparent"; inp.style.border="none"; inp.style.padding="2px 0"; inp.style.fontSize="14px";
+    inp.onchange=function(){ var arr=quoteList(); arr[i]=inp.value; state.quotes=arr.join("\n"); save(); showQuote(); };   // ersetzen
+    var del=document.createElement("button"); del.className="btn danger mini2"; del.textContent="✕";
+    del.onclick=function(){ var arr=quoteList(); arr.splice(i,1); state.quotes=arr.join("\n"); save(); renderQuoteList(); showQuote(); };   // löschen
+    r.appendChild(inp); r.appendChild(del); box.appendChild(r);
+  });
+}
+function openQuotes(){ renderQuoteList(); document.getElementById("q_new").value=""; document.getElementById("quoteScrim").classList.add("open"); }
+function closeQuotes(){ document.getElementById("quoteScrim").classList.remove("open"); }
+
+/* single-habit calendar heatmap (UNREAL) */
+function toggleDay(arrName,ds){ var arr=state[arrName]; var i=arr.indexOf(ds); if(i>=0)arr.splice(i,1); else arr.push(ds); save(); }
+function renderCalHeatmap(host, arrName, monthDate){
+  var y=monthDate.getFullYear(), m=monthDate.getMonth();
+  var startDow=(new Date(y,m,1).getDay()+6)%7, dim=new Date(y,m+1,0).getDate(), today=todayStr(), arr=state[arrName];
+  var html='<div class="hmnav"><button data-hm="prev">‹</button><span class="mlabel">'+MO[m]+' '+y+'</span><button data-hm="next">›</button></div><div class="hmgrid">';
+  WDH.forEach(function(w){ html+='<div class="wdh">'+w+'</div>'; });
+  for(var b=0;b<startDow;b++) html+='<div class="hmcell blank"></div>';
+  for(var day=1;day<=dim;day++){
+    var ds=y+"-"+pad(m+1)+"-"+pad(day), fut=ds>today, done=arr.indexOf(ds)>=0, cls="hmcell";
+    if(done)cls+=" done"; else if(!fut)cls+=" miss"; else cls+=" future";
+    if(!fut)cls+=" tap"; if(ds===today)cls+=" today";
+    html+='<div class="'+cls+'" data-day="'+ds+'">'+day+'</div>';
+  }
+  html+='</div><div class="hint2">Tag antippen = grün/rot umschalten. Später automatisch aus Obsidian.</div>';
+  host.innerHTML=html;
+  host.querySelector('[data-hm="prev"]').onclick=function(){ hmMonth.setMonth(hmMonth.getMonth()-1); renderCalHeatmap(host,arrName,hmMonth); };
+  host.querySelector('[data-hm="next"]').onclick=function(){ hmMonth.setMonth(hmMonth.getMonth()+1); renderCalHeatmap(host,arrName,hmMonth); };
+  Array.prototype.forEach.call(host.querySelectorAll('.hmcell.tap'),function(c){ c.onclick=function(){ toggleDay(arrName,c.getAttribute("data-day")); renderCalHeatmap(host,arrName,hmMonth); }; });
+}
+
+/* multi-habit matrix (Sport) */
+var HABITS=[
+  {key:"sportDays", icon:"💪", name:"Sport", color:"--green"},
+  {key:"medDays", icon:"🧘", name:"Meditation", color:"--blue"},
+  {key:"journalDays", icon:"📓", name:"Journal", color:"--purple"}
+];
+function renderMatrix(host, monthDate){
+  var y=monthDate.getFullYear(), m=monthDate.getMonth(), dim=new Date(y,m+1,0).getDate(), today=todayStr();
+  var html='<div class="hmnav"><button data-hm="prev">‹</button><span class="mlabel">'+MO[m]+' '+y+'</span><button data-hm="next">›</button></div>';
+  html+='<div class="matrix" style="grid-template-columns:minmax(96px,auto) repeat('+dim+',minmax(20px,1fr));">';
+  // header row
+  html+='<div class="mx-h"></div>';
+  for(var day=1;day<=dim;day++){ html+='<div class="mx-h">'+day+'</div>'; }
+  // habit rows
+  HABITS.forEach(function(hb){
+    html+='<div class="mx-lbl"><span>'+hb.icon+'</span>'+hb.name+'</div>';
+    for(var d2=1;d2<=dim;d2++){
+      var ds=y+"-"+pad(m+1)+"-"+pad(d2), fut=ds>today, on=state[hb.key].indexOf(ds)>=0;
+      var cls="mx-cell"+(on?" on":"")+(fut?" future":"")+(ds===today?" today":"");
+      var st=on?(' style="background:var('+hb.color+')"'):'';
+      html+='<div class="'+cls+'" data-h="'+hb.key+'" data-day="'+ds+'"'+st+'></div>';
+    }
+  });
+  html+='</div><div class="hint2">Zelle antippen zum Umschalten. Später automatisch aus Obsidian.</div>';
+  host.innerHTML=html;
+  host.querySelector('[data-hm="prev"]').onclick=function(){ hmMonth.setMonth(hmMonth.getMonth()-1); renderMatrix(host,hmMonth); };
+  host.querySelector('[data-hm="next"]').onclick=function(){ hmMonth.setMonth(hmMonth.getMonth()+1); renderMatrix(host,hmMonth); };
+  Array.prototype.forEach.call(host.querySelectorAll('.mx-cell'),function(c){
+    if(c.classList.contains("future"))return;
+    c.onclick=function(){ toggleDay(c.getAttribute("data-h"), c.getAttribute("data-day")); renderMatrix(host,hmMonth); renderTodayToggles(); };
+  });
+}
+var toggleHost=null;
+function renderTodayToggles(){
+  if(!toggleHost)return;
+  var t=todayStr(); toggleHost.innerHTML="";
+  HABITS.forEach(function(hb){
+    var on=state[hb.key].indexOf(t)>=0;
+    var b=document.createElement("div"); b.className="htog"+(on?" on":"");
+    if(on) b.style.background="var("+hb.color+")";
+    b.innerHTML='<span class="em">'+hb.icon+'</span>'+hb.name+(on?" ✓":"");
+    b.onclick=function(){ toggleDay(hb.key,t); renderTodayToggles(); if(matrixHost) renderMatrix(matrixHost,hmMonth); };
+    toggleHost.appendChild(b);
+  });
+}
+
+/* detail */
+var hmMonth=new Date(), matrixHost=null;
+function openDetail(type){ if(type==="finanzen" && state.pin && state.pin.length>0){ openPinGate(); return; } buildDetail(type); }
+function buildDetail(type){
+  hmMonth=new Date(); matrixHost=null; toggleHost=null;
+  var dC=document.getElementById("dContent"); dC.innerHTML="";
+  var icon=document.getElementById("dIcon"), title=document.getElementById("dTitle");
+
+  if(type==="unreal"){
+    icon.textContent="🎮"; title.textContent="UNREAL";
+    var hm=document.createElement("div"); hm.className="card"; hm.style.flex="0 0 auto";
+    hm.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--amber)"></span>An welchen Tagen 3D gearbeitet</div><div data-host></div>';
+    dC.appendChild(hm); renderCalHeatmap(hm.querySelector("[data-host]"),"unrealDays",hmMonth);
+
+  } else if(type==="sport"){
+    icon.textContent="💪"; title.textContent="Gesundheit & Sport";
+    // today toggles
+    var tg=document.createElement("div"); tg.className="card"; tg.style.flex="0 0 auto";
+    tg.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--green)"></span>Heute erledigt?</div><div class="htoggles" data-tg></div>';
+    dC.appendChild(tg); toggleHost=tg.querySelector("[data-tg]"); renderTodayToggles();
+    // matrix
+    var mx=document.createElement("div"); mx.className="card"; mx.style.flex="0 0 auto";
+    mx.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--green)"></span>Übersicht Monat</div><div data-mx></div>';
+    dC.appendChild(mx); matrixHost=mx.querySelector("[data-mx]"); renderMatrix(matrixHost,hmMonth);
+    // calories
+    var target=tdee(), eaten=eatenToday(), left=target-eaten; var cls=left<0?"--red":(left<target*0.15?"--amber":"--green");
+    var cal=document.createElement("div"); cal.className="card"; cal.style.flex="0 0 auto";
+    cal.innerHTML='<div class="lab"><span class="dot" style="--accent:var('+cls+')"></span>Kalorien heute</div><div class="bigval" style="color:var('+cls+')">'+left+' <span style="font-size:.4em;color:var(--mid)">kcal übrig</span></div><div class="hint2">'+eaten+' von '+target+' kcal · grobe Schätzung aus deinem Profil</div>';
+    dC.appendChild(cal);
+    // food
+    var food=document.createElement("div"); food.className="card"; food.style.flex="0 0 auto";
+    var t=todayStr(); var list=state.food.filter(function(f){return (f.date||t)===t;}).sort(function(a,b){return (a.time||"").localeCompare(b.time||"");});
+    var inner='<div class="lab"><span class="dot" style="--accent:var(--green)"></span>Heute gegessen</div>';
+    if(!list.length) inner+='<div class="empty">Noch nichts eingetragen — über ⚙.</div>';
+    else list.forEach(function(f){ inner+='<div class="foodrow" style="margin-bottom:6px"><span class="tm">'+(f.time||"—")+'</span><span class="it">'+esc(f.item)+'</span><span class="kc">'+(+f.kcal||0)+' kcal</span></div>'; });
+    food.innerHTML=inner; dC.appendChild(food);
+
+  } else if(type==="finanzen"){
+    icon.textContent="💶"; title.textContent="Finanzen";
+    var thr=+state.bThr||0;
+    var live=(state.finBalance!=null && state.finBalance!==undefined);
+    var curFmt=function(v,cur){ if(!cur||cur==="EUR") return fmtEur(v); try{return new Intl.NumberFormat("de-DE",{style:"currency",currency:cur,maximumFractionDigits:2}).format(v);}catch(e){return (Math.round(v*100)/100)+" "+cur;} };
+    if(live){
+      var bal=+state.finBalance||0, cur=state.finCurrency||"EUR";
+      var c2=bal<=0?"--red":(thr>0&&bal<thr?"--amber":"--green");
+      var p=document.createElement("div"); p.className="card"; p.style.flex="0 0 auto";
+      p.innerHTML='<div class="lab"><span class="dot" style="--accent:var('+c2+')"></span>Kontostand gesamt</div><div class="bigval" style="color:var('+c2+')">'+curFmt(bal,cur)+'</div><div class="hint2">Live aus bunq · zuletzt aktualisiert '+esc(state.finUpdated||"—")+'</div>';
+      dC.appendChild(p);
+      var accs=state.finAccounts||[];
+      if(accs.length){
+        var lst=document.createElement("div"); lst.className="card"; lst.style.flex="0 0 auto";
+        var inner='<div class="lab"><span class="dot" style="--accent:var(--green)"></span>Konten</div>';
+        accs.forEach(function(a){
+          var tail=a.iban?('<span style="color:var(--low)"> ···'+String(a.iban).slice(-4)+'</span>'):'';
+          inner+='<div class="foodrow" style="margin-bottom:6px"><span class="it">'+esc(a.name||"Konto")+tail+'</span><span class="kc">'+curFmt(+a.balance||0, a.currency||cur)+'</span></div>';
+        });
+        lst.innerHTML=inner; dC.appendChild(lst);
+      }
+      if(state.finError){
+        var er=document.createElement("div"); er.className="card"; er.style.flex="0 0 auto";
+        er.innerHTML='<div class="hint2" style="color:var(--red)">Letzte Aktualisierung fehlgeschlagen: '+esc(state.finError)+'. Angezeigt wird der letzte bekannte Stand.</div>';
+        dC.appendChild(er);
+      }
+    } else {
+      var v=+state.bVal||0; var c3=v<=0?"--red":(thr>0&&v<thr?"--amber":"--green");
+      var pm=document.createElement("div"); pm.className="card";
+      pm.innerHTML='<div class="lab"><span class="dot" style="--accent:var('+c3+')"></span>Budget</div><div class="bigval" style="color:var('+c3+')">'+fmtEur(v)+'</div><div class="hint2">Manuell gepflegt. Sobald bunq auf dem Pi läuft, erscheint hier automatisch dein echter Kontostand.</div>';
+      dC.appendChild(pm);
+    }
+  } else if(type==="kalorien"){
+    icon.textContent="🔥"; title.textContent="Kalorien";
+    var target=tdee();
+    var eatenOnDate=function(ds){ var s=0; state.food.forEach(function(f){ if((f.date||todayStr())===ds) s+=(+f.kcal||0); }); return s; };
+    var entriesOnDate=function(ds){ var n=0; state.food.forEach(function(f){ if((f.date||todayStr())===ds) n++; }); return n; };
+    var addDays=function(d,n){ var x=new Date(d); x.setDate(x.getDate()+n); return x; };
+    var mondayOf=function(d){ var x=new Date(d); var dow=(x.getDay()+6)%7; x.setDate(x.getDate()-dow); x.setHours(0,0,0,0); return x; };
+    var sgn=function(v){ return (v>0?"+":(v<0?"−":""))+Math.abs(v); };
+    var today=todayStr(), mon=mondayOf(new Date());
+    // Woche Mo–So, je Tag über/unter Budget
+    var wk=document.createElement("div"); wk.className="card"; wk.style.flex="0 0 auto";
+    var rows="";
+    for(var i=0;i<7;i++){
+      var day=addDays(mon,i), ds=ymd(day), fut=ds>today, n=entriesOnDate(ds);
+      var label=WD2[day.getDay()]+" "+day.getDate()+"."+(day.getMonth()+1)+".";
+      var val;
+      if(fut || n===0){ val='<span class="kc" style="color:var(--low)">—</span>'; }
+      else { var diff=eatenOnDate(ds)-target; var c=diff>0?"--red":(diff<0?"--green":"--amber");
+             val='<span class="kc" style="color:var('+c+')">'+sgn(diff)+' kcal</span>'; }
+      rows+='<div class="foodrow" style="margin-bottom:6px"><span class="it"'+(ds===today?' style="color:var(--amber)"':'')+'>'+label+(ds===today?' · heute':'')+'</span>'+val+'</div>';
+    }
+    wk.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--amber)"></span>Diese Woche · Budget '+target+' kcal/Tag</div>'+rows+'<div class="hint2">+ = über Budget, − = unter Budget · Tage ohne Eintrag erscheinen als —</div>';
+    dC.appendChild(wk);
+    // Durchschnitt Vorwoche / Vormonat (nur erfasste Tage)
+    var avg=function(start, days){ var s=0,c=0; for(var k=0;k<days;k++){ var d2=ymd(addDays(start,k)); if(entriesOnDate(d2)>0){ s+=eatenOnDate(d2)-target; c++; } } return c>0?{a:Math.round(s/c),c:c}:null; };
+    var prevWeek=avg(addDays(mon,-7),7);
+    var now=new Date(), firstPrev=new Date(now.getFullYear(),now.getMonth()-1,1), daysPrev=new Date(now.getFullYear(),now.getMonth(),0).getDate();
+    var prevMonth=avg(firstPrev,daysPrev);
+    var fmtAvg=function(o){ if(!o) return '<span style="color:var(--low)">keine Daten</span>'; var c=o.a>0?"--red":(o.a<0?"--green":"--amber"); return '<span style="color:var('+c+')">'+sgn(o.a)+' kcal</span> <span style="font-size:.4em;color:var(--low)">Ø/Tag · '+o.c+' Tage</span>'; };
+    var st=document.createElement("div"); st.className="card"; st.style.flex="0 0 auto";
+    st.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--blue)"></span>Durchschnitt pro Tag</div>'+
+      '<div style="display:flex; gap:24px; flex-wrap:wrap;">'+
+        '<div><div class="hint2" style="margin:0 0 4px">Letzte Woche</div><div class="bigval" style="font-size:clamp(22px,4.2vh,36px)">'+fmtAvg(prevWeek)+'</div></div>'+
+        '<div><div class="hint2" style="margin:0 0 4px">Letzter Monat</div><div class="bigval" style="font-size:clamp(22px,4.2vh,36px)">'+fmtAvg(prevMonth)+'</div></div>'+
+      '</div>';
+    dC.appendChild(st);
+  } else if(type==="pi"){
+    icon.textContent="🍓"; title.textContent="Raspberry Pi";
+    var p=state.pi||{};
+    var card=document.createElement("div"); card.className="card"; card.style.flex="0 0 auto";
+    var has=p && (p.tempC!=null||p.memPct!=null||p.diskPct!=null||p.load1!=null||p.uptimeSec!=null);
+    if(!has){
+      card.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--green)"></span>System</div><div class="empty">Noch keine Systemdaten — diese kommen vom Pi-Server, sobald er läuft.</div>';
+    } else {
+      var rw=function(label,val){ return '<div class="foodrow" style="margin-bottom:6px"><span class="it">'+label+'</span><span class="kc">'+val+'</span></div>'; };
+      var col=function(c,t){ return '<span style="color:var('+c+')">'+t+'</span>'; };
+      var rows="";
+      if(p.tempC!=null){ var tc=p.tempC>=75?"--red":(p.tempC>=62?"--amber":"--green"); rows+=rw("Temperatur",col(tc,p.tempC+" °C")); }
+      if(p.load1!=null){ var lc=(p.cpus&&p.load1>p.cpus)?"--red":((p.cpus&&p.load1>p.cpus*0.7)?"--amber":"--green"); rows+=rw("CPU-Last 1/5/15",col(lc,p.load1.toFixed(2)+" / "+p.load5.toFixed(2)+" / "+p.load15.toFixed(2))); }
+      if(p.memPct!=null){ var mc=p.memPct>=90?"--red":(p.memPct>=75?"--amber":"--green"); rows+=rw("Arbeitsspeicher",col(mc,p.memPct+" % · "+p.memUsedMB+"/"+p.memTotalMB+" MB")); }
+      if(p.diskPct!=null){ var dc2=p.diskPct>=90?"--red":(p.diskPct>=80?"--amber":"--green"); rows+=rw("Speicher",col(dc2,p.diskPct+" % · "+p.diskUsedGB+"/"+p.diskTotalGB+" GB")); }
+      if(p.uptimeSec!=null){ rows+=rw("Laufzeit",fmtUptime(p.uptimeSec)); }
+      if(p.throttled!=null){ var th=(p.throttled!=="0x0"); rows+=rw("Drosselung",col(th?"--red":"--green",th?("⚠ "+p.throttled):"keine")); }
+      card.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--green)"></span>System · live</div>'+rows+'<div class="hint2">Aktualisiert '+esc(p.updated||"—")+' · Werte vom Pi-Server</div>';
+    }
+    dC.appendChild(card);
+  } else if(type==="garten"){
+    icon.textContent="🌱"; title.textContent="Garten";
+    buildGarten(dC);
+  } else if(type==="shameforest"){
+    icon.textContent="🌲"; title.textContent="Shameforest";
+    var ph=document.createElement("div"); ph.className="card"; ph.style.flex="0 0 auto";
+    ph.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--purple)"></span>Shameforest</div><div class="empty">Funktion wird noch festgelegt — hier kommt bald Inhalt rein.</div>';
+    dC.appendChild(ph);
+  }
+  showScreen("detail");
+}
+
+/* ---------------- Garten (Aufsicht + Planungsmodus: Mischkultur & Fruchtfolge, lokal) ---------------- */
+function gCrop(id){ return GARTEN_CROPS[id] || {name:(id||"?"), emoji:"\u2022", color:"#7a8896", rowCm:0, plantCm:0, maturity:0, family:"", from:"transplant", zehrer:""}; }
+function gCropName(id){ if(GARTEN_CROPS[id]) return GARTEN_CROPS[id].name; return EXTRA_NAME[id]||id||""; }
+function gFamilyOf(id){ if(GARTEN_CROPS[id]) return GARTEN_CROPS[id].family; return EXTRA_FAM[id]||""; }
+function gFamColor(f){ return FAM_COLOR[f]||"#7a8896"; }
+function gGood(crop){ return gGoodMap[crop]||[]; }
+function gParseDate(s){ var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||""); if(!m) return null; var y=+m[1],mo=+m[2],dd=+m[3]; if(mo<1||mo>12||dd<1||dd>31) return null; var d=new Date(y,mo-1,dd); return (isNaN(d.getTime())||d.getFullYear()!==y||d.getMonth()!==mo-1||d.getDate()!==dd)?null:d; }
+function gDays(a,b){ return Math.round((b-a)/86400000); }
+function gRefDate(slot,c){ return (c && c.from==="sow") ? slot.sown : slot.planted; }
+function gHarvest(slot){
+  if(!slot || !slot.crop) return {txt:"leer", cls:"--low", days:null, hd:null};
+  var c=gCrop(slot.crop);
+  if(!c.maturity) return {txt:"Reifezeit unbekannt", cls:"--low", days:null, hd:null};
+  var ref=gParseDate(gRefDate(slot,c));
+  if(!ref) return {txt:(c.from==="sow"?"Aussaatdatum fehlt":"Pflanzdatum fehlt"), cls:"--low", days:null, hd:null};
+  var hd=new Date(ref); hd.setDate(hd.getDate()+c.maturity);
+  var t=new Date(); t=new Date(t.getFullYear(),t.getMonth(),t.getDate());
+  var hd0=new Date(hd.getFullYear(),hd.getMonth(),hd.getDate()); var dl=gDays(t,hd0);
+  if(dl>0) return {txt:"Ernte in "+dl+" Tg", cls:(dl<=14?"--amber":"--green"), days:dl, hd:hd};
+  if(dl===0) return {txt:"heute erntereif", cls:"--amber", days:0, hd:hd};
+  return {txt:"reif seit "+(-dl)+" Tg", cls:"--red", days:dl, hd:hd};
+}
+function gIsSack(bed){ return (bed.kind==="sack")||((+bed.len||0)<=1); }
+function gBedById(id){ var b=state.garten.beds; for(var i=0;i<b.length;i++) if(b[i].id===id) return b[i]; return null; }
+function gSlotOf(bedId,lane,idx){ var bed=gBedById(bedId); if(!bed) return null; var l=(bed.slots||[])[lane-1]||[]; return l[idx]||null; }
+function gNeighborCrop(bed,lane,idx){ var l=(bed.slots||[])[lane-1]||[]; var s=l[idx]; return s?s.crop:""; }
+function gGoodN(crop){ return gGoodMap[crop]||[]; }
+function gBad(crop){ return gBadMap[crop]||[]; }
+function gAnyIn(arr,set){ for(var i=0;i<arr.length;i++){ if(set.indexOf(arr[i])>=0) return true; } return false; }
+function gAdjLanes(bed,lane){ var lanes=Math.max(1,+bed.lanes||1), wk=+bed.walkway||0, out=[]; if(lane-1>=1 && !(wk>0 && (lane-1)===wk)) out.push(lane-1); if(lane+1<=lanes && !(wk>0 && lane===wk)) out.push(lane+1); return out; }
+function gNeighborCropsAll(bed,lane,idx){ var r=[], L=(bed.slots||[]); function P(ln,ix){ var la=L[ln-1]||[]; var s=la[ix]; if(s&&s.crop) r.push(s.crop); } P(lane,idx-1); P(lane,idx+1); gAdjLanes(bed,lane).forEach(function(ln){ P(ln,idx); }); return r; }
+function gHasBadNeighbor(bed,lane,idx,crop){ return gAnyIn(gNeighborCropsAll(bed,lane,idx), gBad(crop)); }
+function gBadNeighborName(bed,lane,idx,crop){ var nb=gNeighborCropsAll(bed,lane,idx), bad=gBad(crop); for(var i=0;i<nb.length;i++){ if(bad.indexOf(nb[i])>=0) return gCropName(nb[i]); } return ""; }
+function gBadNeighborList(bed,lane,idx,crop){ var nb=gNeighborCropsAll(bed,lane,idx), bad=gBad(crop), out=[], seen={}; nb.forEach(function(x){ if(bad.indexOf(x)>=0 && !seen[x]){ seen[x]=1; out.push(x); } }); return out; }
+function gRotConflict(slot){ if(!slot.prev || !slot.crop) return false; var pf=gFamilyOf(slot.prev); return !!pf && gFamilyOf(slot.crop)===pf; }
+
+var gShowPrev=false, gDC=null, gSel=null, gPopOpen=false;
+
+function gFind(sel){ if(!sel) return null; var b=(state.garten&&state.garten.beds)||[]; for(var i=0;i<b.length;i++){ if(b[i].id===sel.bedId){ var lane=(b[i].slots||[])[sel.lane-1]; if(lane){ var s=lane[sel.idx]; if(s) return {bed:b[i], lane:sel.lane, idx:sel.idx, slot:s}; } } } return null; }
+
+function gSlotProblems(bed, lane, idx, slot){
+  var out=[]; if(!slot || !slot.crop) return out; var c=gCrop(slot.crop);
+  if(gRotConflict(slot)) out.push({sev:"rot", text:'Fruchtfolge: '+c.name+' steht hier nach '+gCropName(slot.prev)+' – beide gehören zur Familie '+c.family+'. Dieselbe Familie direkt im Folgejahr am selben Platz begünstigt bodenbürtige Krankheiten und Schädlinge und zehrt den Boden einseitig aus. Besser eine andere Familie hierher setzen.'});
+  var bl=gBadNeighborList(bed,lane,idx,slot.crop);
+  if(bl.length) out.push({sev:"bad", text:'Ungünstiger Nachbar: '+c.name+' steht direkt neben '+bl.map(gCropName).join(", ")+'. Diese Kombination gilt als ungünstig – Heuristik, also nicht ideal, aber kein hartes Verbot.'});
+  return out;
+}
+var GIESS_SVG='<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M6 10h9v7a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-7z"/><path fill="currentColor" d="M15 11l5-2.4v1.3L16.4 12.6z"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M8 10c0-1.7 1.3-3 3-3"/></svg>';
+function gCareHtml(k){ var ca=GARTEN_CARE[k]; if(!ca) return '<div class="tp-li">Keine Pflegehinweise hinterlegt.</div>';
+  return '<div class="tp-li" style="margin-top:9px"><b>Standort:</b> '+esc(ca.standort)+'</div>'+
+         '<div class="tp-li"><b>Gießen:</b> '+esc(ca.giessen)+'</div>'+
+         '<div class="tp-li"><b>Düngen:</b> '+esc(ca.duengen)+'</div>'+
+         '<div class="tp-li"><b>Krankheiten & Mängel:</b> '+esc(ca.probleme)+'</div>'; }
+// Numerische Temperatur-Schwellen je Kultur (für die Live-Wetter-Bewertung)
+var GARTEN_TEMP={
+  tomate:{dayMin:15,dayMax:28,nightMin:12,frostSafe:false}, paprika:{dayMin:18,dayMax:30,nightMin:15,frostSafe:false},
+  zucchini:{dayMin:15,dayMax:30,nightMin:12,frostSafe:false}, gurke:{dayMin:18,dayMax:30,nightMin:15,frostSafe:false},
+  aubergine:{dayMin:20,dayMax:32,nightMin:17,frostSafe:false}, cannabis:{dayMin:16,dayMax:30,nightMin:13,frostSafe:false},
+  salat:{dayMin:8,dayMax:22,nightMin:3,frostSafe:true}, porree:{dayMin:5,dayMax:26,nightMin:-10,frostSafe:true},
+  zwiebel:{dayMin:7,dayMax:28,nightMin:-3,frostSafe:true}, knoblauch:{dayMin:5,dayMax:26,nightMin:-12,frostSafe:true},
+  melone:{dayMin:20,dayMax:33,nightMin:17,frostSafe:false}
+};
+function gRatWord(lv){ return {gut:"Gut",mittel:"Mittel",schlecht:"Schlecht",ideal:"Ideal"}[lv]||lv; }
+function gWxRate(k,tmax,tmin){
+  var T=GARTEN_TEMP[k]; if(!T) return {lv:"mittel",why:""};
+  var bad=[], mid=[];
+  if(!T.frostSafe && tmin<=1) bad.push("Frostgefahr nachts");
+  else if(tmin < T.nightMin-5) bad.push("Nächte zu kalt");
+  else if(tmin < T.nightMin) mid.push("Nächte kühler als ideal");
+  if(tmax > T.dayMax+5) bad.push("zu heiß");
+  else if(tmax > T.dayMax) mid.push("etwas heiß");
+  if(tmax < T.dayMin-5) bad.push("tagsüber zu kalt");
+  else if(tmax < T.dayMin) mid.push("tagsüber kühl");
+  if(bad.length) return {lv:"schlecht", why:bad.join(", ")};
+  if(mid.length) return {lv:"mittel", why:mid.join(", ")};
+  return {lv:"gut", why:"im optimalen Bereich"};
+}
+function gRotRate(slot){
+  if(!slot.prev) return {lv:"ideal", why:"keine Vorkultur hinterlegt"};
+  var cf=gFamilyOf(slot.crop), pf=gFamilyOf(slot.prev);
+  if(cf && pf && cf===pf) return {lv:"schlecht", why:"hier stand "+gCropName(slot.prev)+" – gleiche Familie ("+cf+"), Anbaupause einhalten"};
+  if(gCrop(slot.crop).zehrer==="Starkzehrer" && gCrop(slot.prev).zehrer==="Starkzehrer") return {lv:"mittel", why:"nach "+gCropName(slot.prev)+": beide Starkzehrer, Boden zehrt aus → gut nachdüngen/Kompost"};
+  return {lv:"ideal", why:"nach "+gCropName(slot.prev)+" unkritisch"};
+}
+function gNeighRate(bed,lane,idx,crop){
+  var ns=gNeighborCropsAll(bed,lane,idx); if(!ns.length) return {lv:"mittel", why:"keine direkten Nachbarn"};
+  var gd=gGood(crop), bd=gBad(crop), good=[], bad=[], seen={};
+  ns.forEach(function(n){ if(seen[n])return; seen[n]=1; if(bd.indexOf(n)>=0) bad.push(n); else if(gd.indexOf(n)>=0) good.push(n); });
+  if(bad.length) return {lv:"schlecht", why:"neben "+bad.map(gCropName).join(", ")+" (ungünstige Kombination)"};
+  if(good.length) return {lv:"ideal", why:"neben "+good.map(gCropName).join(", ")+" (gute Partner)"};
+  var uq=[]; ns.forEach(function(n){ if(uq.indexOf(n)<0) uq.push(n); });
+  return {lv:"mittel", why:"Nachbarn neutral ("+uq.map(gCropName).join(", ")+")"};
+}
+function gNightRate(k,tmin){
+  var T=GARTEN_TEMP[k]; if(!T||tmin==null) return {lv:"mittel", why:""};
+  if(!T.frostSafe && tmin<=1) return {lv:"schlecht", why:"Frostgefahr"};
+  if(tmin < T.nightMin-5) return {lv:"schlecht", why:"deutlich zu kalt"};
+  if(tmin < T.nightMin) return {lv:"mittel", why:"kühler als ideal"};
+  return {lv:"ideal", why:"im idealen Bereich"};
+}
+// Tief der nächsten Nacht – stundengenau aus der Vorhersage, relativ zu jetzt (also stets aktuell)
+function gNextNightLow(){
+  if(wxData && wxData.hourly && wxData.hourly.time && wxData.hourly.time.length){
+    var H=wxData.hourly, now=new Date(), end=new Date(now.getTime()+20*3600000), lo=null;
+    for(var i=0;i<H.time.length;i++){ var dt=new Date(H.time[i]); if(dt<now||dt>end) continue; var hr=dt.getHours(); if(!(hr>=18||hr<=8)) continue; var t=H.temperature_2m[i]; if(t==null) continue; if(lo==null||t<lo) lo=t; }
+    if(lo!=null) return {temp:Math.round(lo), approx:false};
+  }
+  var d=wxData&&wxData.daily; if(d&&d.temperature_2m_min&&d.temperature_2m_min.length){ var idx=(new Date().getHours()>=9 && d.temperature_2m_min.length>1)?1:0; return {temp:Math.round(d.temperature_2m_min[idx]), approx:true}; }
+  return null;
+}
+function gWeatherHtml(k){
+  if(!wxData || !wxData.daily || !wxData.daily.time || !wxData.daily.time.length)
+    return '<div class="tp-li"><b>Wetter am Standort:</b> '+(wxData?'wird geladen…':'noch nicht geladen (Wetter-Kachel öffnen / online gehen)')+'</div>';
+  var nn=gNextNightLow(), nnHtml="";
+  if(nn){ var nr=gNightRate(k, nn.temp); nnHtml='<div class="tp-li" style="margin-top:4px"><b>Nächste Nacht:</b> <span class="rg-'+nr.lv+'">'+gRatWord(nr.lv)+' · '+nn.temp+' °C'+(nn.approx?' (ca.)':'')+'</span>'+(nr.why?' <span class="wxw">('+esc(nr.why)+')</span>':'')+'</div>'; }
+  var D=wxData.daily, n=Math.min(D.time.length,7), rows="";
+  for(var j=0;j<n;j++){
+    var mx=Math.round(D.temperature_2m_max[j]), mn=Math.round(D.temperature_2m_min[j]);
+    var dt=new Date(D.time[j]);
+    var nm=j===0?"Heute":j===1?"Morgen":j===2?"Übermorgen":(WD2[dt.getDay()]+". "+dt.getDate()+"."+(dt.getMonth()+1)+".");
+    var r=gWxRate(k,mx,mn), nrow=gNightRate(k,mn);
+    var emo=(D.weather_code?wmo(D.weather_code[j])[0]:"");
+    rows+='<div class="wxrow"><span class="wxd">'+nm+'</span><span class="wxt">'+emo+' '+mx+'° / <span class="rg-'+nrow.lv+'">'+mn+'°</span></span><span class="rg-'+r.lv+'">'+gRatWord(r.lv)+'</span>'+(r.why?'<span class="wxw">'+esc(r.why)+'</span>':'')+'</div>';
+  }
+  var T=GARTEN_TEMP[k];
+  var ref=T?'<div class="tp-sub">Nacht-Maßstab: ideal ≥'+T.nightMin+' °C'+(T.frostSafe?' (verträgt Frost)':' (frostempfindlich)')+' · Tag '+T.dayMin+'–'+T.dayMax+' °C. Die Farbe am Nacht-Wert zeigt die Eignung. Ab Tag 4–5 wird die Prognose unsicherer.</div>':'';
+  return '<div class="tp-li"><b>Wetter am Standort ('+esc(state.city)+') – Tag/Nacht:</b></div>'+nnHtml+rows+ref;
+}
+function gSituationHtml(bed,lane,idx,slot){
+  var k=slot.crop, rot=gRotRate(slot), ne=gNeighRate(bed,lane,idx,k);
+  return gWeatherHtml(k)+
+    '<div class="tp-li" style="margin-top:9px"><b>Vorkultur:</b> <span class="rg-'+rot.lv+'">'+gRatWord(rot.lv)+'</span> – '+esc(rot.why)+'</div>'+
+    '<div class="tp-li"><b>Nachbarschaft:</b> <span class="rg-'+ne.lv+'">'+gRatWord(ne.lv)+'</span> – '+esc(ne.why)+'</div>'+
+    gCareHtml(k);
+}
+function gWXRefresh(){ try{ gRefreshPlan(); }catch(e){} var t=document.getElementById("gtip"); if(gTipCur && t && t.style.display!=="none"){ try{ gShowTip(gTipCur); }catch(e){} } if(gPopOpen){ try{ gRenderInfo(); }catch(e){} } }
+var gTipTimer=null, gTipCur=null;
+function gEnsureTip(){ var t=document.getElementById("gtip"); if(!t){ t=document.createElement("div"); t.id="gtip"; t.className="gtip"; document.body.appendChild(t); } return t; }
+function gShowTip(el){ if(!el || !el._reasonHtml) return; gTipCur=el;
+  if(el._tipKind==="care" && el._bId!=null){ var _b=gBedById(el._bId); var _s=_b&&((_b.slots||[])[el._ln-1]||[])[el._ix]; if(_s && _s.crop) el._reasonHtml=gSituationHtml(_b,el._ln,el._ix,_s); }
+  var t=gEnsureTip(); t.className="gtip "+(el._sev||"");
+  var head=(el._tipKind==="care")?'<div class="th">💧 So wächst sie am besten</div>':'<div class="th">⚠ Warnung</div>';
+  t.innerHTML=head+el._reasonHtml; t.style.display="block";
+  var r=el.getBoundingClientRect(), tw=t.offsetWidth, th=t.offsetHeight, vw=window.innerWidth||800, vh=window.innerHeight||600;
+  var left=r.right-tw; if(left+tw>vw-8) left=vw-8-tw; if(left<8) left=8;
+  var top=r.bottom+8; if(top+th>vh-8) top=r.top-th-8; if(top<8) top=8;
+  t.style.left=left+"px"; t.style.top=top+"px";
+}
+function gHideTip(){ gTipCur=null; var t=document.getElementById("gtip"); if(t) t.style.display="none"; }
+function gEnsurePopover(){
+  if(document.getElementById("gpop")) return;
+  var back=document.createElement("div"); back.id="gpopback"; back.className="gpopback"; back.style.display="none"; back.onclick=gClosePopover; document.body.appendChild(back);
+  var pop=document.createElement("div"); pop.id="gpop"; pop.className="gpop"; pop.style.display="none";
+  pop.innerHTML='<button class="gpopx" id="gpopx" title="Schließen">✕</button><div id="gpopbody"></div>';
+  document.body.appendChild(pop);
+  document.getElementById("gpopx").onclick=gClosePopover;
+  document.addEventListener("keydown", function(e){ if((e.key==="Escape"||e.keyCode===27) && gPopOpen) gClosePopover(); });
+}
+function gPositionPopover(el){
+  var pop=document.getElementById("gpop"); if(!pop||!el) return; var r=el.getBoundingClientRect();
+  var pw=pop.offsetWidth||320, ph=pop.offsetHeight||300, vw=window.innerWidth||800, vh=window.innerHeight||600;
+  var left=r.left; if(left+pw>vw-10) left=vw-10-pw; if(left<10) left=10;
+  var top=r.bottom+8; if(top+ph>vh-10) top=r.top-ph-8; if(top<10) top=10;
+  pop.style.left=left+"px"; pop.style.top=top+"px";
+}
+function gOpenPopover(el){
+  if(!el) return; gHideTip();
+  var bedId=el.getAttribute("data-bed"), lane=+el.getAttribute("data-lane"), idx=+el.getAttribute("data-idx");
+  gSel={bedId:bedId, lane:lane, idx:idx};
+  if(gDC){ Array.prototype.forEach.call(gDC.querySelectorAll(".gslot.sel,.gsack.sel"),function(x){x.classList.remove("sel");}); }
+  el.classList.add("sel");
+  gEnsurePopover(); gPopOpen=true;
+  var back=document.getElementById("gpopback"); if(back) back.style.display="block";
+  var pop=document.getElementById("gpop"); if(pop) pop.style.display="block";
+  gRenderInfo(); gPositionPopover(el);
+}
+function gClosePopover(){ gPopOpen=false; var b=document.getElementById("gpopback"); if(b) b.style.display="none"; var p=document.getElementById("gpop"); if(p) p.style.display="none"; gSel=null; gRefreshPlan(); }
+
+function gPaintSlot(el){
+  var bedId=el.getAttribute("data-bed"), lane=+el.getAttribute("data-lane"), idx=+el.getAttribute("data-idx");
+  var bed=gBedById(bedId); if(!bed) return; var slot=((bed.slots||[])[lane-1]||[])[idx]; if(!slot) return;
+  el.classList.remove("ripe","overdue","empty","sel");
+  var sack=el.classList.contains("gsack");
+  el.style.background = slot.crop ? gCrop(slot.crop).color : "";
+  var lab=el.querySelector(".gslab");
+  if(slot.crop){ lab.innerHTML=gCrop(slot.crop).emoji+'<span>'+esc(gCrop(slot.crop).name)+'</span>'; }
+  else { el.classList.add("empty"); lab.innerHTML=(gShowPrev&&slot.prev)?('<span style="opacity:.65">'+esc(gCropName(slot.prev))+'?</span>'):(sack?'+ leer':'+'); }
+  if(gSel && gSel.bedId===bedId && gSel.lane===lane && gSel.idx===idx) el.classList.add("sel");
+  if(slot.crop){ var hi=gHarvest(slot); if(hi.days!=null && hi.days<0) el.classList.add("overdue"); else if(hi.days!=null && hi.days<=14) el.classList.add("ripe"); }
+  var tag=el.querySelector(".gwtag");
+  if(tag){
+    if(!slot.crop){ tag.className="gwtag"; tag.style.display="none"; tag.textContent=""; tag._sev=""; tag._reasonHtml=""; tag._tipKind=""; }
+    else {
+      var _P=gSlotProblems(bed,lane,idx,slot);
+      if(_P.length){
+        var _sev=_P.some(function(p){return p.sev==="rot";})?"rot":"bad";
+        tag.className="gwtag "+_sev; tag.style.display="inline-flex"; tag.textContent="!";
+        tag._sev=_sev; tag._tipKind="warn"; tag._reasonHtml=_P.map(function(p){return '<div class="tp-li">'+esc(p.text)+'</div>';}).join("");
+      } else {
+        tag.className="gwtag care"; tag.style.display="inline-flex"; tag.innerHTML=GIESS_SVG;
+        tag._sev="care"; tag._tipKind="care"; tag._bId=bedId; tag._ln=lane; tag._ix=idx; tag._reasonHtml=gSituationHtml(bed,lane,idx,slot);
+      }
+    }
+  }
+}
+function gRefreshPlan(){
+  if(!gDC) return;
+  Array.prototype.forEach.call(gDC.querySelectorAll(".gslot,.gsack"), gPaintSlot);
+  gRenderInfo(); gRenderSecondary(); gUpdateGartenTileWarn();
+}
+function gRenderInfo(){
+  if(!gPopOpen) return;
+  var host=document.getElementById("gpopbody"); if(!host) return;
+  var f=gFind(gSel);
+  if(!f){ gClosePopover(); return; }
+  var s=f.slot, c=gCrop(s.crop), hi=gHarvest(s);
+  var fromTxt=(c.from==="sow")?"ab Aussaat":((c.from==="set")?"ab Stecken":"ab Auspflanzen");
+  var title=s.crop?(c.emoji+' '+esc(c.name)):'Leere Box';
+  var h='<div class="lab" style="padding-right:30px"><span class="dot" style="--accent:var(--blue)"></span>'+title+' <span style="color:var(--low);font-weight:400">· '+esc(f.bed.name)+' · Bahn '+f.lane+' · Slot '+(f.idx+1)+'</span></div>';
+  if(s.crop){
+    var _P=gSlotProblems(f.bed,f.lane,f.idx,s);
+    if(_P.length){ var _sev=_P.some(function(p){return p.sev==="rot";})?"rot":"bad"; h+='<div class="gstat warn'+(_sev==="rot"?' rot':'')+'"><div class="gstat-h">⚠ Warnung</div>'+_P.map(function(p){return '<div class="gstat-li">'+esc(p.text)+'</div>';}).join("")+'</div>'; }
+    else { h+='<div class="gstat ok"><div class="gstat-h">✓ Passt</div><div class="gstat-li">Keine Fruchtfolge- oder Nachbar-Probleme an diesem Platz.</div></div>'; }
+  }
+  h+='<div class="gei">'+
+     '<div class="fld" style="min-width:170px"><label>Kultur (Dropdown)</label><select id="gi_crop">'+gCropOptions(s.crop,true)+'</select></div>';
+  if(s.crop){
+    h+='<div class="fld sm" style="min-width:120px"><label>Aussaat (gesät)</label><input type="date" id="gi_sown" value="'+esc(s.sown||"")+'"></div>'+
+       '<div class="fld sm" style="min-width:120px"><label>Umgetopft</label><input type="date" id="gi_potted" value="'+esc(s.potted||"")+'"></div>'+
+       '<div class="fld sm" style="min-width:120px"><label>Ausgepflanzt</label><input type="date" id="gi_planted" value="'+esc(s.planted||"")+'"></div>'+
+       '<button class="btn danger mini2" id="gi_clear">Box leeren</button>';
+  }
+  h+='</div>';
+  if(s.crop){
+    var good=gGood(s.crop).map(function(k){return gCrop(k).emoji+" "+gCropName(k);}).join(", ")||"keine hinterlegt";
+    var bad=gBad(s.crop).map(function(k){return gCrop(k).emoji+" "+gCropName(k);}).join(", ")||"keine bekannten";
+    h+='<div style="margin-top:10px">';
+    h+='<div class="foodrow" style="margin-bottom:6px"><span class="it">Ernte</span><span class="kc" style="color:var('+hi.cls+')">'+hi.txt+(hi.hd?(' · '+ymd(hi.hd)):'')+'</span></div>';
+    h+='<div class="foodrow" style="margin-bottom:6px"><span class="it">Reifezeit</span><span class="kc">'+(c.maturity?(c.maturity+' Tage '+fromTxt):'—')+'</span></div>';
+    h+='<div class="foodrow" style="margin-bottom:6px"><span class="it">Vorjahr hier</span><span class="kc">'+(s.prev?(esc(gCropName(s.prev))+' ('+esc(gFamilyOf(s.prev))+')'):'—')+'</span></div>';
+    h+='<div class="foodrow" style="margin-bottom:6px"><span class="it">Familie</span><span class="kc">'+(c.family||"—")+' · '+(c.zehrer||"—")+'</span></div>';
+    h+='<div class="foodrow" style="margin-bottom:6px"><span class="it">Gute Nachbarn</span><span class="kc">'+esc(good)+'</span></div>';
+    h+='<div class="foodrow" style="margin-bottom:6px"><span class="it">Eher meiden</span><span class="kc">'+esc(bad)+'</span></div>';
+    var _ca=GARTEN_CARE[s.crop];
+    if(_ca) h+='<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--line)"><div class="lab" style="margin-bottom:6px"><span class="dot" style="--accent:var(--blue)"></span>Aktuelle Lage & Pflege</div>'+gSituationHtml(f.bed,f.lane,f.idx,s)+'</div>';
+    h+='</div>';
+  } else {
+    h+='<div style="margin-top:10px">';
+    h+='<div class="foodrow" style="margin-bottom:6px"><span class="it">Vorjahr hier</span><span class="kc">'+(s.prev?(esc(gCropName(s.prev))+' ('+esc(gFamilyOf(s.prev))+')'):'—')+'</span></div>';
+    h+='<div class="hint2">Wähle oben eine Kultur, um sie hier zu setzen – die Bewertung (Fruchtfolge & Nachbarn) erscheint dann sofort.</div>';
+    h+='</div>';
+  }
+  host.innerHTML=h;
+  var apply=function(){ save(); gRefreshPlan(); };
+  var cropSel=document.getElementById("gi_crop"); if(cropSel) cropSel.onchange=function(){ s.crop=cropSel.value; if(!s.crop){ s.sown=""; s.potted=""; s.planted=""; } apply(); };
+  var so=document.getElementById("gi_sown"); if(so) so.onchange=function(){ s.sown=so.value; apply(); };
+  var po=document.getElementById("gi_potted"); if(po) po.onchange=function(){ s.potted=po.value; apply(); };
+  var pl=document.getElementById("gi_planted"); if(pl) pl.onchange=function(){ s.planted=pl.value; apply(); };
+  var cl=document.getElementById("gi_clear"); if(cl) cl.onclick=function(){ s.crop=""; s.sown=""; s.potted=""; s.planted=""; apply(); };
+}
+function gCollectWarnings(){
+  var rot=[], seenR={}, bad=[], seenB={};
+  ((state.garten&&state.garten.beds)||[]).forEach(function(bed){ (bed.slots||[]).forEach(function(lane,li){ var ln=li+1; (lane||[]).forEach(function(s,idx){
+    if(!s.crop) return;
+    if(gRotConflict(s)){ var w=bed.name+' · Bahn '+ln+': '+gCropName(s.crop)+' nach '+gCropName(s.prev)+' (beide '+gFamilyOf(s.crop)+')'; if(!seenR[w]){seenR[w]=1; rot.push(w);} }
+    var edges=[], dn=(lane[idx+1]||{}); if(dn.crop) edges.push({c:dn.crop, lab:'Bahn '+ln});
+    gAdjLanes(bed,ln).forEach(function(al){ if(al>ln){ var ls=((bed.slots[al-1]||[])[idx]||{}); if(ls.crop) edges.push({c:ls.crop, lab:'Bahn '+ln+'↔'+al}); } });
+    edges.forEach(function(e){ if(gBad(s.crop).indexOf(e.c)>=0){ var w2=bed.name+' · '+e.lab+': '+gCropName(s.crop)+' neben '+gCropName(e.c)+' (ungünstig)'; if(!seenB[w2]){seenB[w2]=1; bad.push(w2);} } });
+  }); }); });
+  return {rot:rot, bad:bad};
+}
+function gWarnSeverity(){ var w=gCollectWarnings(); return w.rot.length?"rot":(w.bad.length?"bad":"none"); }
+function gUpdateGartenTileWarn(){ var el=document.getElementById("gartenWarn"); if(!el) return; ensureGarten(); el.style.display=(gWarnSeverity()==="none")?"none":"inline-flex"; }
+function gRenderSecondary(){
+  var host=document.getElementById("gUp"); if(!host) return;
+  var W=gCollectWarnings(), rotW=W.rot, badW=W.bad, h="";
+  h+='<div class="lab"><span class="dot" style="--accent:var(--amber)"></span>Warnungen</div>';
+  h+='<div class="lab" style="margin-top:2px"><span class="dot" style="--accent:var(--red)"></span>Fruchtfolge</div>';
+  if(!rotW.length) h+='<div class="empty">Keine Fruchtfolge-Konflikte.</div>';
+  else rotW.forEach(function(w){ h+='<div class="gwarn"><span class="wi">⚠</span><span>'+esc(w)+'</span></div>'; });
+  h+='<div class="lab" style="margin-top:12px"><span class="dot" style="--accent:var(--amber)"></span>Ungünstige Nachbarn</div>';
+  if(!badW.length) h+='<div class="empty">Keine ungünstigen Nachbarn erkannt.</div>';
+  else badW.forEach(function(w){ h+='<div class="gwarn amber"><span class="wi">⚠</span><span>'+esc(w)+'</span></div>'; });
+  h+='<div class="hint2" style="margin-top:8px">Tippe eine markierte Box an, um Details und Begründung zu sehen.</div>';
+  var items=[];
+  state.garten.beds.forEach(function(bed){ (bed.slots||[]).forEach(function(lane,li){ (lane||[]).forEach(function(s){ if(!s.crop) return; var hi=gHarvest(s); if(hi.days!=null) items.push({bed:bed.name, lane:li+1, crop:gCrop(s.crop), hi:hi}); }); }); });
+  items.sort(function(a,b){ return a.hi.days-b.hi.days; });
+  h+='<div class="lab" style="margin-top:14px"><span class="dot" style="--accent:var(--green)"></span>Nächste Ernten</div>';
+  if(!items.length) h+='<div class="empty">Noch keine Pflanzdaten — Box antippen und Daten setzen.</div>';
+  else items.forEach(function(it){ h+='<div class="foodrow" style="margin-bottom:6px"><span class="it">'+it.crop.emoji+' '+esc(it.crop.name)+' <span style="color:var(--low)">· '+esc(it.bed)+' · Bahn '+it.lane+'</span></span><span class="kc" style="color:var('+it.hi.cls+')">'+it.hi.txt+'</span></div>'; });
+  host.innerHTML=h;
+}
+function gSeasonEnd(){
+  if(!window.confirm("Saison abschließen? Die aktuelle Belegung wird als Vorjahr gespeichert und alle Boxen geleert – für die neue Planung.")) return;
+  state.garten.beds.forEach(function(bed){ (bed.slots||[]).forEach(function(lane){ lane.forEach(function(s){ s.prev=s.crop||""; s.crop=""; s.sown=""; s.potted=""; s.planted=""; }); }); });
+  save(); gSel=null; buildDetail("garten");
+}
+function gResetGarten(){ if(!window.confirm("Garten auf die mitgelieferte Vorlage zurücksetzen? Deine aktuelle Beet-Belegung wird ersetzt.")) return; state.garten=JSON.parse(JSON.stringify(DEFAULTS.garten)); save(); gSel=null; renderGartenEditor(); if(document.getElementById("detail").classList.contains("active")) buildDetail("garten"); }
+function buildGarten(dC){
+  if(!wxData){ try{ fetchWeather(); }catch(e){} }
+  ensureGarten(); gDC=dC;
+  var head=document.createElement("div"); head.className="card"; head.style.flex="0 0 auto";
+  head.innerHTML='<div class="lab"><span class="dot" style="--accent:var(--green)"></span>Beete & Tunnel</div>'+
+    '<div class="hint2">Aufsicht von oben. Tippe eine Box oder den Pflanzennamen an: im Panel darunter trägst du per Dropdown die Kultur ein und siehst sofort die Bewertung. Ein Warnsymbol auf einer Box führt zur selben Begründung.</div>'+
+    '<div class="gleg2"><span class="gleg-i rot">!</span>Fruchtfolge <span class="gleg-i bad">!</span>Nachbar <span class="gleg-i care">'+GIESS_SVG+'</span>Wetter & Pflege · Symbol hovern für Details, Box antippen zum Eintragen</div>'+
+    '<div class="gctrl" style="margin-top:10px"><button class="btn primary mini2" id="g_edit">✎ Beete bearbeiten</button><button class="btn ghost mini2" id="g_prevtog">'+(gShowPrev?"Vorjahr ausblenden":"Vorjahr einblenden")+'</button><button class="btn ghost mini2" id="g_season">Saison abschließen …</button></div>';
+  dC.appendChild(head);
+
+  state.garten.beds.forEach(function(bed){
+    var card=document.createElement("div"); card.className="card"; card.style.flex="0 0 auto";
+    var cover=bed.cover?'<span class="gbadge foil">Folie</span>':'<span class="gbadge open">ohne Folie</span>';
+    var sun=bed.sun?'<span class="gbadge">☀ '+esc(bed.sun)+'</span>':'';
+    var note=bed.note?'<span class="gbadge">'+esc(bed.note)+'</span>':'';
+    var lenb=gIsSack(bed)?'':'<span class="gbadge">'+(+bed.len||0)+' m</span>';
+    var html='<div class="gbedhead"><span class="gbedname">'+esc(bed.name||"Beet")+'</span>'+cover+lenb+sun+note+'</div>';
+    if(gIsSack(bed)){
+      html+='<div class="gsackrow">';
+      var lane0=(bed.slots&&bed.slots[0])||[];
+      if(!lane0.length) html+='<div class="empty">leer</div>';
+      lane0.forEach(function(s,idx){ html+='<span class="gsack" data-bed="'+esc(bed.id)+'" data-lane="1" data-idx="'+idx+'"><span class="gslab"></span><span class="gwtag"></span></span>'; });
+      html+='</div>';
+    } else {
+      var lanes=Math.max(1,+bed.lanes||1), wk=+bed.walkway||0, maxL=0, i;
+      for(i=0;i<lanes;i++){ var ll=(bed.slots[i]||[]).length; if(ll>maxL) maxL=ll; }
+      if(maxL===0) maxL=1;
+      var lenM=+bed.len||1, PXPM=15, boxH=Math.max(18,Math.round(lenM*PXPM/maxL)), mpc=lenM/maxL;
+      html+='<div class="gplan">';
+      html+='<div class="glanecol rule"><div class="glanehd">m</div><div class="gcells">';
+      for(var r=0;r<maxL;r++){ var mB=(r+1)*mpc,mT=r*mpc,lab=""; if(r===0)lab="0"; else if(r===maxL-1)lab=""+Math.round(lenM); else if(Math.floor(mB/5)>Math.floor(mT/5))lab=""+(Math.floor(mB/5)*5); html+='<div class="grulecell" style="height:'+boxH+'px">'+lab+'</div>'; }
+      html+='</div></div>';
+      for(var ln=1; ln<=lanes; ln++){
+        var lane=bed.slots[ln-1]||[];
+        html+='<div class="glanecol"><div class="glanehd">Bahn '+ln+'</div><div class="gcells">';
+        for(var idx=0; idx<lane.length; idx++){ html+='<div class="gslot" data-bed="'+esc(bed.id)+'" data-lane="'+ln+'" data-idx="'+idx+'" style="height:'+boxH+'px"><span class="gslab"></span><span class="gwtag"></span></div>'; }
+        html+='</div></div>';
+        if(wk>0 && ln===wk && ln<lanes) html+='<div class="gwalk"><span>Gehweg</span></div>';
+      }
+      html+='</div>';
+    }
+    card.innerHTML=html; dC.appendChild(card);
+  });
+
+  var up=document.createElement("div"); up.className="card"; up.id="gUp"; up.style.flex="0 0 auto"; dC.appendChild(up);
+
+  Array.prototype.forEach.call(dC.querySelectorAll(".gslot,.gsack"), function(el){
+    el.onclick=function(){ gOpenPopover(el); };
+  });
+  Array.prototype.forEach.call(dC.querySelectorAll(".gwtag"), function(tg){
+    tg.addEventListener("mouseenter", function(){ gShowTip(tg); });
+    tg.addEventListener("mouseleave", function(){ gHideTip(); });
+    tg.addEventListener("click", function(e){ e.stopPropagation(); if(!tg._reasonHtml) return; gShowTip(tg); clearTimeout(gTipTimer); gTipTimer=setTimeout(gHideTip, 4500); });
+  });
+  var eb=document.getElementById("g_edit"); if(eb) eb.onclick=openGartenEditor;
+  var pt=document.getElementById("g_prevtog"); if(pt) pt.onclick=function(){ gShowPrev=!gShowPrev; buildDetail("garten"); };
+  var se=document.getElementById("g_season"); if(se) se.onclick=gSeasonEnd;
+  gRefreshPlan();
+}
+function gCropOptions(sel, withEmpty){ var o=withEmpty?('<option value=""'+(!sel?' selected':'')+'>\u2014 leer \u2014</option>'):''; return o+GCROP_KEYS.map(function(k){ return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+GARTEN_CROPS[k].emoji+' '+GARTEN_CROPS[k].name+'</option>'; }).join(""); }
+function openGartenEditor(){ ensureGarten(); renderGartenEditor(); document.getElementById("gScrim").classList.add("open"); }
+function closeGartenEditor(){ document.getElementById("gScrim").classList.remove("open"); save(); if(document.getElementById("detail").classList.contains("active")) buildDetail("garten"); }
+function gSetLaneCount(lane, n){ n=Math.max(0, n|0); while(lane.length<n) lane.push({crop:"",sown:"",potted:"",planted:"",prev:""}); if(lane.length>n) lane.length=n; }
+function renderGartenEditor(){
+  var body=document.getElementById("g_body"), beds=state.garten.beds, h="";
+  beds.forEach(function(bed,bi){
+    h+='<div class="fset" data-bed="'+bi+'">';
+    h+='<div class="row"><div class="fld"><label>Beet-Name</label><input data-f="name" value="'+esc(bed.name||"")+'"></div>'+
+       '<div class="fld sm"><label>Folie</label><select data-f="cover"><option value="1"'+(bed.cover?' selected':'')+'>ja</option><option value="0"'+(!bed.cover?' selected':'')+'>nein</option></select></div>'+
+       '<div class="fld sm"><label>L\u00e4nge m</label><input data-f="len" inputmode="decimal" value="'+(+bed.len||0)+'"></div>'+
+       '<div class="fld sm"><label>Bahnen</label><input data-f="lanes" inputmode="numeric" value="'+(+bed.lanes||1)+'"></div>'+
+       '<div class="fld sm"><label>Gehweg nach Bahn</label><input data-f="walkway" inputmode="numeric" value="'+(+bed.walkway||0)+'"></div>'+
+       '<button class="btn danger mini2" data-act="delbed">Beet \u2715</button></div>';
+    if(!gIsSack(bed)){
+      h+='<div class="row" style="margin-top:8px">';
+      for(var ln=1; ln<=Math.max(1,+bed.lanes||1); ln++){ var cnt=((bed.slots[ln-1]||[]).length); h+='<div class="fld sm"><label>Bahn '+ln+' \u00b7 Slots</label><input data-slots="'+ln+'" inputmode="numeric" value="'+cnt+'"></div>'; }
+      h+='</div>';
+      h+='<div class="row" style="margin-top:8px; align-items:flex-end">'+
+         '<div class="fld sm"><label>Bahn</label><input data-fill="lane" inputmode="numeric" value="1"></div>'+
+         '<div class="fld sm"><label>von Slot</label><input data-fill="from" inputmode="numeric" value="1"></div>'+
+         '<div class="fld sm"><label>bis Slot</label><input data-fill="to" inputmode="numeric" value="'+((bed.slots[0]||[]).length||1)+'"></div>'+
+         '<div class="fld"><label>Kultur</label><select data-fill="crop">'+gCropOptions(GCROP_KEYS[0],true)+'</select></div>'+
+         '<button class="btn primary mini2" data-act="fill">Bereich f\u00fcllen</button></div>';
+      h+='<div class="hint2" style="margin-top:6px">\u201eBereich f\u00fcllen\u201c setzt die Kultur f\u00fcr die Slots von\u2013bis dieser Bahn. Pflanzdaten setzt du in der Ansicht je Box.</div>';
+    } else {
+      h+='<div class="hint2" style="margin-top:6px">Pflanzsack: eine Box. Kultur/Daten direkt in der Garten-Ansicht setzen.</div>';
+    }
+    h+='</div>';
+  });
+  h+='<div class="foot" style="justify-content:space-between"><button class="btn primary mini2" id="g_addbed">+ Beet</button><button class="btn ghost mini2" id="g_reset">Garten auf Vorlage zur\u00fccksetzen</button></div>';
+  body.innerHTML=h;
+
+  Array.prototype.forEach.call(body.querySelectorAll('.fset[data-bed]'), function(fs){
+    var bi=+fs.getAttribute("data-bed"), bed=beds[bi];
+    Array.prototype.forEach.call(fs.querySelectorAll('[data-f]'), function(inp){
+      inp.onchange=function(){ var f=inp.getAttribute("data-f");
+        if(f==="cover") bed.cover=(inp.value==="1");
+        else if(f==="len") bed.len=parseFloat(inp.value)||0;
+        else if(f==="lanes"){ var n=Math.max(1,parseInt(inp.value,10)||1); bed.lanes=n; while(bed.slots.length<n) bed.slots.push([]); if(bed.slots.length>n) bed.slots.length=n; renderGartenEditor(); }
+        else if(f==="walkway") bed.walkway=Math.max(0,parseInt(inp.value,10)||0);
+        else bed[f]=inp.value;
+      };
+    });
+    Array.prototype.forEach.call(fs.querySelectorAll('[data-slots]'), function(inp){
+      inp.onchange=function(){ var ln=+inp.getAttribute("data-slots"); if(!bed.slots[ln-1]) bed.slots[ln-1]=[]; gSetLaneCount(bed.slots[ln-1], parseInt(inp.value,10)||0); };
+    });
+    var fillBtn=fs.querySelector('[data-act="fill"]');
+    if(fillBtn) fillBtn.onclick=function(){
+      var g=function(sel){ return fs.querySelector('[data-fill="'+sel+'"]'); };
+      var ln=Math.max(1, parseInt(g("lane").value,10)||1);
+      var from=Math.max(1, parseInt(g("from").value,10)||1);
+      var to=Math.max(from, parseInt(g("to").value,10)||from);
+      var crop=g("crop").value;
+      while(bed.slots.length<ln) bed.slots.push([]);
+      var lane=bed.slots[ln-1]; gSetLaneCount(lane, Math.max(lane.length, to));
+      for(var i=from-1; i<to; i++){ lane[i].crop=crop; }
+      renderGartenEditor();
+    };
+    var db=fs.querySelector('[data-act="delbed"]'); if(db) db.onclick=function(){ if(window.confirm("Dieses Beet l\u00f6schen?")){ beds.splice(bi,1); renderGartenEditor(); } };
+  });
+  var ab=document.getElementById("g_addbed"); if(ab) ab.onclick=function(){ beds.push({id:"bed"+Date.now(), name:"Neues Beet", cover:false, len:5, lanes:2, walkway:0, sun:"", note:"", slots:[[],[]]}); renderGartenEditor(); };
+  var rb=document.getElementById("g_reset"); if(rb) rb.onclick=gResetGarten;
+}
+
+/* weather */
+var wxData=null, wxRetry=null, wxRetryDelay=8000, wxLastOk=0, wxLastReason="—";
+try{ var _wc=localStorage.getItem("hub2wx"); if(_wc) wxData=JSON.parse(_wc); }catch(e){}
+var WMO={0:["☀️","Klar"],1:["🌤️","Heiter"],2:["⛅","Wolkig"],3:["☁️","Bedeckt"],45:["🌫️","Nebel"],48:["🌫️","Nebel"],51:["🌦️","Niesel"],53:["🌦️","Niesel"],55:["🌦️","Niesel"],56:["🌧️","Eisregen"],57:["🌧️","Eisregen"],61:["🌧️","Regen"],63:["🌧️","Regen"],65:["🌧️","Starkregen"],66:["🌧️","Eisregen"],67:["🌧️","Eisregen"],71:["🌨️","Schnee"],73:["🌨️","Schnee"],75:["❄️","Starker Schnee"],77:["🌨️","Schneegriesel"],80:["🌦️","Schauer"],81:["🌦️","Schauer"],82:["⛈️","Starke Schauer"],85:["🌨️","Schneeschauer"],86:["🌨️","Schneeschauer"],95:["⛈️","Gewitter"],96:["⛈️","Gewitter"],99:["⛈️","Schweres Gewitter"]};
+function wmo(c){return WMO[c]||["🌡️","—"];}
+function tcol(t){if(t<0)return"#7cc0ff";if(t<5)return"var(--blue)";if(t<12)return"#4fb6c5";if(t<20)return"var(--green)";if(t<27)return"var(--amber)";return"var(--red)";}
+/* Datenquellen: 1) Open-Meteo (weltweit), 2) DWD/Bright Sky (Deutscher Wetterdienst, Fallback) – beide kostenlos, ohne Key, mit CORS */
+function omUrl(){
+  return "https://api.open-meteo.com/v1/forecast?latitude="+state.lat+"&longitude="+state.lon+
+    "&current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m"+
+    "&hourly=temperature_2m,weather_code,precipitation_probability"+
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"+
+    "&timezone=auto&forecast_days=7";
+}
+function bsUrl(){
+  var t=new Date(), d1=new Date(t.getTime()+6*86400000);
+  return "https://api.brightsky.dev/weather?lat="+state.lat+"&lon="+state.lon+
+    "&date="+ymd(t)+"&last_date="+ymd(d1)+"&tz=Europe%2FBerlin";
+}
+// Bright-Sky-Icons grob auf WMO-Codes abbilden, damit dieselbe Anzeige-Logik greift
+var BS2WMO={"clear-day":0,"clear-night":0,"partly-cloudy-day":2,"partly-cloudy-night":2,"cloudy":3,"fog":45,"wind":3,"rain":61,"sleet":66,"snow":71,"hail":77,"thunderstorm":95};
+function bsCode(ic){ return (ic!=null && BS2WMO[ic]!=null) ? BS2WMO[ic] : 3; }
+function bsToOM(bs){                          // Bright-Sky-Antwort in Open-Meteo-Form übersetzen
+  var rec=(bs&&bs.weather)||[]; if(!rec.length) return null;
+  var now=Date.now(), ci=0, best=Infinity;
+  for(var i=0;i<rec.length;i++){ var diff=Math.abs(new Date(rec[i].timestamp).getTime()-now); if(diff<best){best=diff;ci=i;} }
+  var cur=rec[ci];
+  var H={time:[],temperature_2m:[],weather_code:[],precipitation_probability:[]};
+  rec.forEach(function(r){ H.time.push(String(r.timestamp).slice(0,16)); H.temperature_2m.push(r.temperature); H.weather_code.push(bsCode(r.icon)); H.precipitation_probability.push(null); });
+  var byDay={};
+  rec.forEach(function(r){ var d=String(r.timestamp).slice(0,10); if(!byDay[d]) byDay[d]={min:Infinity,max:-Infinity,noon:null,codes:{}};
+    if(r.temperature!=null){ if(r.temperature<byDay[d].min)byDay[d].min=r.temperature; if(r.temperature>byDay[d].max)byDay[d].max=r.temperature; }
+    var hr=+String(r.timestamp).slice(11,13); if(hr>=11&&hr<=14) byDay[d].noon=r.icon; byDay[d].codes[r.icon]=(byDay[d].codes[r.icon]||0)+1; });
+  var keys=Object.keys(byDay).sort();
+  var D={time:[],temperature_2m_max:[],temperature_2m_min:[],weather_code:[],precipitation_probability_max:[]};
+  keys.forEach(function(d){ var o=byDay[d]; var ic=o.noon||Object.keys(o.codes).sort(function(a,b){return o.codes[b]-o.codes[a];})[0];
+    D.time.push(d); D.temperature_2m_max.push(Math.round(o.max)); D.temperature_2m_min.push(Math.round(o.min)); D.weather_code.push(bsCode(ic)); D.precipitation_probability_max.push(null); });
+  return { current:{temperature_2m:cur.temperature, weather_code:bsCode(cur.icon), apparent_temperature:cur.temperature, relative_humidity_2m:cur.relative_humidity, wind_speed_10m:cur.wind_speed}, hourly:H, daily:D };
+}
+var WX_SOURCES=[
+  {name:"Open-Meteo", url:omUrl, map:function(d){return d;}},
+  {name:"DWD/Bright Sky", url:bsUrl, map:bsToOM}
+];
+function fetchWeather(){ clearTimeout(wxRetry); wxTry(0,"keine Daten"); }
+function wxTry(idx, lastReason){
+  if(idx>=WX_SOURCES.length){                 // alle Quellen fehlgeschlagen -> Grund anzeigen, weiter versuchen
+    wxLastReason=lastReason;
+    if(!wxData){ document.getElementById("wxCond").textContent="offline – "+lastReason; document.getElementById("offline").style.display="block"; }
+    wxRetryDelay=Math.min(Math.round(wxRetryDelay*1.6),60000);
+    wxRetry=setTimeout(fetchWeather, wxRetryDelay);
+    return;
+  }
+  var src=WX_SOURCES[idx], done=false;
+  function next(reason){ if(done)return; done=true; wxTry(idx+1, reason); }   // nächste Quelle probieren
+  function good(d){
+    if(done)return; done=true; clearTimeout(wxRetry);
+    d._src=src.name; wxData=d; wxRetryDelay=8000; wxLastOk=Date.now();
+    try{ localStorage.setItem("hub2wx", JSON.stringify(d)); }catch(e){}      // letzten Stand cachen
+    document.getElementById("offline").style.display="none";
+    renderWxMini();
+    if(document.getElementById("weather").classList.contains("active")) buildWeatherDetail();
+    try{ gWXRefresh(); }catch(e){}
+  }
+  try{
+    var xhr=new XMLHttpRequest();              // XHR statt fetch: kompatibel auch mit alten WebViews (FullyKiosk)
+    xhr.open("GET", src.url(), true);
+    xhr.timeout=12000;
+    xhr.onreadystatechange=function(){
+      if(xhr.readyState!==4) return;
+      if(xhr.status>=200 && xhr.status<300){
+        try{ var mapped=src.map(JSON.parse(xhr.responseText)); if(mapped && mapped.current && mapped.daily && mapped.daily.time && mapped.daily.time.length) good(mapped); else next("ungültige Antwort"); }
+        catch(e){ next("Parsing-Fehler"); }
+      } else { next("Fehler "+(xhr.status||"?")); }
+    };
+    xhr.ontimeout=function(){ next("Zeitüberschreitung"); };
+    xhr.onerror=function(){ next("kein Netz/blockiert"); };   // CORS/CSP/DNS/Zertifikat landen hier
+    xhr.onabort=function(){ next("abgebrochen"); };
+    xhr.send();
+  }catch(e){ next("Anfrage nicht möglich"); }
+}
+window.addEventListener("online", function(){ wxRetryDelay=8000; fetchWeather(); });   // WLAN nach Boot da -> sofort holen
+document.addEventListener("visibilitychange", function(){ if(!document.hidden && Date.now()-wxLastOk>600000) fetchWeather(); });
+function renderWxMini(){
+  if(!wxData)return;
+  var w=wmo(wxData.current.weather_code), t=Math.round(wxData.current.temperature_2m);
+  document.getElementById("wxIc").textContent=w[0];
+  var tp=document.getElementById("wxTp"); tp.textContent=t+"°"; tp.style.color=tcol(t);
+  var lo=Math.round(wxData.daily.temperature_2m_min[0]), hi=Math.round(wxData.daily.temperature_2m_max[0]);
+  document.getElementById("wxCond").textContent=w[1]+" · "+hi+"°/"+lo+"°";
+  document.getElementById("wxCity").textContent=state.city;
+}
+function buildWeatherDetail(){
+  document.getElementById("wxdTitle").textContent="Wetter · "+state.city;
+  var hostH=document.getElementById("wxHours"); hostH.innerHTML="";
+  var host7=document.getElementById("wx7"); host7.innerHTML="";
+  if(!wxData){ hostH.innerHTML='<div class="empty">Keine Wetterdaten. Grund: '+wxLastReason+'<br>Aktive Koordinaten: '+(+state.lat).toFixed(4)+', '+(+state.lon).toFixed(4)+'</div>'; var s0=document.getElementById("wxSrc"); if(s0) s0.textContent=""; showScreen("weather"); return; }
+  var times=wxData.hourly.time, now=new Date(), startIdx=0;
+  for(var i=0;i<times.length;i++){ if(new Date(times[i])>=now){ startIdx=Math.max(0,i-1); break; } }
+  for(var k=startIdx;k<Math.min(startIdx+24,times.length);k++){
+    var dt=new Date(times[k]), w=wmo(wxData.hourly.weather_code[k]), tp=Math.round(wxData.hourly.temperature_2m[k]);
+    var pp=wxData.hourly.precipitation_probability?wxData.hourly.precipitation_probability[k]:null;
+    var el=document.createElement("div"); el.className="hour";
+    el.innerHTML='<div class="h">'+pad(dt.getHours())+':00</div><div class="i">'+w[0]+'</div><div class="t" style="color:'+tcol(tp)+'">'+tp+'°</div>'+(pp!=null?'<div class="p">💧'+pp+'%</div>':'');
+    hostH.appendChild(el);
+  }
+  var dt7=wxData.daily.time;
+  for(var j=0;j<dt7.length;j++){
+    var d=new Date(dt7[j]), w2=wmo(wxData.daily.weather_code[j]);
+    var mx=Math.round(wxData.daily.temperature_2m_max[j]), mn=Math.round(wxData.daily.temperature_2m_min[j]);
+    var pp2=wxData.daily.precipitation_probability_max?wxData.daily.precipitation_probability_max[j]:null;
+    var name=j===0?"Heute":(j===1?"Morgen":WD2[d.getDay()]+". "+d.getDate()+"."+(d.getMonth()+1)+".");
+    var row=document.createElement("div"); row.className="d7";
+    row.innerHTML='<span class="dn">'+name+'</span><span class="di">'+w2[0]+'</span><span class="dtemp"><span style="color:'+tcol(mx)+'">'+mx+'°</span> <span style="color:var(--low)">'+mn+'°</span></span><span class="dp">'+(pp2!=null?'💧'+pp2+'%':'')+'</span>';
+    host7.appendChild(row);
+  }
+  var srcEl=document.getElementById("wxSrc"); if(srcEl) srcEl.textContent="Quelle: "+(wxData._src||"Open-Meteo")+" · "+(+state.lat).toFixed(3)+", "+(+state.lon).toFixed(3);
+  showScreen("weather");
+}
+
+/* Geocoding: PLZ -> Zippopotam.us (DE), Ortsname -> Open-Meteo. Beide kostenlos, ohne Key, mit CORS. */
+function omGeoUrl(q){ return "https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(q)+"&count=1&language=de&format=json"; }
+function parseOmGeo(raw){ var r=raw&&raw.results&&raw.results[0]; if(!r) return null; return {lat:+r.latitude, lon:+r.longitude, name:(r.name||"")+(r.admin1?(", "+r.admin1):"")}; }
+function parseZippo(raw){ var p=raw&&raw.places&&raw.places[0]; if(!p) return null; return {lat:parseFloat(p.latitude), lon:parseFloat(p.longitude), name:(p["place name"]||"")+(p.state?(", "+p.state):"")}; }
+function geoXHR(url, parse, ok, fail){
+  try{
+    var x=new XMLHttpRequest(); x.open("GET",url,true); x.timeout=10000;
+    x.onreadystatechange=function(){ if(x.readyState!==4) return;
+      if(x.status>=200 && x.status<300){ try{ var r=parse(JSON.parse(x.responseText)); if(r && validLat(r.lat) && validLon(r.lon)) ok(r); else fail("nicht gefunden"); }catch(e){ fail("Parsing-Fehler"); } }
+      else if(x.status===404){ fail("nicht gefunden"); }
+      else { fail("Fehler "+(x.status||"?")); } };
+    x.ontimeout=function(){ fail("Zeitüberschreitung"); };
+    x.onerror=function(){ fail("kein Netz/blockiert"); };
+    x.send();
+  }catch(e){ fail("Anfrage nicht möglich"); }
+}
+function geocode(query, done){          // done(result|null, fehlermeldung)
+  query=(query||"").trim();
+  if(!query){ done(null,"Bitte PLZ oder Ort eingeben"); return; }
+  if(/^\d{4,5}$/.test(query)){          // sieht nach Postleitzahl aus
+    geoXHR("https://api.zippopotam.us/de/"+encodeURIComponent(query), parseZippo,
+      function(r){ done(r,null); },
+      function(){ geoXHR(omGeoUrl(query), parseOmGeo, function(r){ done(r,null); }, function(m){ done(null,m); }); });
+  } else {                              // Ortsname
+    geoXHR(omGeoUrl(query), parseOmGeo, function(r){ done(r,null); }, function(m){ done(null,m); });
+  }
+}
+
+/* ---- Sync mit dem Pi/Kontrollzentrum (leer = reiner Lokalbetrieb) ---- */
+var srvCoupled={}, pushTimer=null, pullPrevLat=null, pullPrevLon=null;
+function apiUrl(){ return (state.apiBase||"").replace(/\/+$/,""); }
+function schedulePush(){ if(!state.apiBase) return; clearTimeout(pushTimer); pushTimer=setTimeout(pushToServer, 1200); }
+function pushToServer(){
+  if(!state.apiBase) return;
+  var payload={}; for(var k in state){ if(state.hasOwnProperty(k)) payload[k]=state[k]; }
+  delete payload.apiBase;                 // Server-Adresse ist geräte-lokal, nicht teilen
+  try{ var x=new XMLHttpRequest(); x.open("POST", apiUrl()+"/api/data", true); x.timeout=10000;
+    x.setRequestHeader("Content-Type","application/json"); x.send(JSON.stringify(payload)); }catch(e){}
+}
+function pullFromServer(){
+  if(!state.apiBase) return;
+  if(document.getElementById("scrim").classList.contains("open") ||
+     document.getElementById("quoteScrim").classList.contains("open")) return;   // nicht beim Bearbeiten überschreiben
+  try{ var x=new XMLHttpRequest(); x.open("GET", apiUrl()+"/api/data", true); x.timeout=10000;
+    x.onreadystatechange=function(){ if(x.readyState!==4) return; if(x.status<200||x.status>=300) return;
+      try{ var d=JSON.parse(x.responseText); srvCoupled=d._coupled||{}; delete d._coupled; delete d.apiBase;
+        Object.keys(d).forEach(function(k){ state[k]=d[k]; });
+        ["food","todos","sportDays","medDays","journalDays","unrealDays","finAccounts"].forEach(function(k){ if(!Array.isArray(state[k])) state[k]=[]; });
+        if(!validLat(+state.lat)||!validLon(+state.lon)){ state.lat=DEFAULTS.lat; state.lon=DEFAULTS.lon; }
+        ensureGarten();
+        try{ localStorage.setItem("hub2", JSON.stringify(state)); }catch(e){}
+        renderHub();
+        if(pullPrevLat!==state.lat || pullPrevLon!==state.lon){ pullPrevLat=state.lat; pullPrevLon=state.lon; fetchWeather(); }
+      }catch(e){}
+    }; x.send();
+  }catch(e){}
+}
+
+/* screens */
+function showScreen(id){ ["hub","detail","weather"].forEach(function(s){ document.getElementById(s).classList.remove("active"); }); var el=document.getElementById(id); el.classList.add("active","fadein"); setTimeout(function(){el.classList.remove("fadein");},350); if(id==="hub"){ disarmLock(); gUpdateGartenTileWarn(); } }
+Array.prototype.forEach.call(document.querySelectorAll("[data-back]"),function(b){ b.onclick=function(){ showScreen("hub"); }; });
+var lockTimer=null, finanzOpen=false;
+function armLock(){ clearTimeout(lockTimer); lockTimer=setTimeout(function(){ showScreen("hub"); },90000); }
+function disarmLock(){ clearTimeout(lockTimer); finanzOpen=false; }
+document.getElementById("detail").addEventListener("touchstart",function(){ if(finanzOpen) armLock(); },{passive:true});
+document.getElementById("detail").addEventListener("click",function(){ if(finanzOpen) armLock(); });
+
+/* PIN */
+var pinEntry="";
+function openPinGate(){ pinEntry=""; document.getElementById("pinMsg").textContent=""; renderPinDots(); document.getElementById("pinScrim").classList.add("open"); }
+function closePinGate(){ document.getElementById("pinScrim").classList.remove("open"); pinEntry=""; }
+function renderPinDots(){ var n=(state.pin||"").length||4, box=document.getElementById("pinDots"); box.innerHTML=""; for(var k=0;k<n;k++){var d=document.createElement("i"); if(k<pinEntry.length)d.className="on"; box.appendChild(d);} }
+function buildPinPad(){ var pad=document.getElementById("pinPad"); pad.innerHTML=""; ["1","2","3","4","5","6","7","8","9","","0","⌫"].forEach(function(k){ var b=document.createElement("div"); if(k===""){b.className="pinkey empty";pad.appendChild(b);return;} b.className="pinkey"+(k==="⌫"?" fn":""); b.textContent=k; b.onclick=function(){pinPress(k);}; pad.appendChild(b); }); }
+function pinPress(k){ if(k==="⌫"){pinEntry=pinEntry.slice(0,-1);renderPinDots();return;} if(pinEntry.length>=(state.pin||"").length)return; pinEntry+=k; renderPinDots(); if(pinEntry.length===(state.pin||"").length) setTimeout(checkPin,120); }
+function checkPin(){ if(pinEntry===state.pin){ closePinGate(); finanzOpen=true; buildDetail("finanzen"); armLock(); } else { document.getElementById("pinMsg").textContent="Falscher PIN"; var b=document.getElementById("pinBox"); b.classList.add("shake"); setTimeout(function(){b.classList.remove("shake");},420); pinEntry=""; renderPinDots(); } }
+document.getElementById("pinCancel").onclick=closePinGate;
+document.getElementById("pinScrim").onclick=function(e){ if(e.target===this) closePinGate(); };
+
+/* editor */
+function openEditor(){
+  document.getElementById("e_city").value=state.city;
+  document.getElementById("e_place").value=state.city||""; document.getElementById("e_geoMsg").textContent="";
+  document.getElementById("e_lat").value=state.lat; document.getElementById("e_lon").value=state.lon;
+  document.getElementById("e_h").value=state.height; document.getElementById("e_w").value=state.weight;
+  document.getElementById("e_age").value=state.age; document.getElementById("e_sex").value=state.sex;
+  document.getElementById("e_act").value=String(state.activity); document.getElementById("e_adj").value=state.adj;
+  document.getElementById("e_notes").value=state.notes||"";
+  document.getElementById("e_quotes").value=state.quotes||"";
+  document.getElementById("e_bVal").value=state.bVal; document.getElementById("e_bThr").value=state.bThr; document.getElementById("e_pin").value=state.pin||"";
+  document.getElementById("e_api").value=state.apiBase||"";
+  renderFoodList(); renderTodoList(); document.getElementById("scrim").classList.add("open");
+}
+function closeEditor(){ document.getElementById("scrim").classList.remove("open"); }
+function renderFoodList(){ var box=document.getElementById("e_foodlist"); box.innerHTML=""; var t=todayStr(); var list=state.food.filter(function(f){return (f.date||t)===t;}); if(!list.length){box.innerHTML='<div class="rl" style="color:var(--low)">Heute noch nichts.</div>';return;} list.forEach(function(f){ var r=document.createElement("div"); r.className="rl"; r.innerHTML='<span class="a">'+(f.time||"—")+'</span><span class="b">'+esc(f.item)+'</span><span class="a">'+(+f.kcal||0)+'</span>'; var x=document.createElement("button"); x.className="btn danger mini2"; x.textContent="✕"; x.onclick=function(){state.food=state.food.filter(function(z){return z!==f;});renderFoodList();}; r.appendChild(x); box.appendChild(r); }); }
+function renderTodoList(){ var box=document.getElementById("e_todolist"); box.innerHTML=""; var t=todayStr(); var list=state.todos.filter(function(x){return (x.date||t)===t;}); if(!list.length){box.innerHTML='<div class="rl" style="color:var(--low)">Keine Aufgaben.</div>';return;} list.forEach(function(x){ var r=document.createElement("div"); r.className="rl"; r.innerHTML='<span class="a">'+(x.time||"—")+'</span><span class="b">'+esc(x.text)+'</span>'; var del=document.createElement("button"); del.className="btn danger mini2"; del.textContent="✕"; del.onclick=function(){state.todos=state.todos.filter(function(z){return z!==x;});renderTodoList();}; r.appendChild(del); box.appendChild(r); }); }
+document.getElementById("e_fAdd").onclick=function(){ var i=document.getElementById("e_fI").value.trim(); if(!i)return; state.food.push({date:todayStr(),time:document.getElementById("e_fT").value||"",item:i,kcal:+document.getElementById("e_fK").value||0}); document.getElementById("e_fI").value="";document.getElementById("e_fK").value="";renderFoodList(); };
+document.getElementById("e_tAdd").onclick=function(){ var x=document.getElementById("e_tX").value.trim(); if(!x)return; state.todos.push({date:todayStr(),time:document.getElementById("e_tT").value||"",text:x,done:false}); document.getElementById("e_tX").value="";renderTodoList(); };
+function saveAll(){
+  state.city=document.getElementById("e_city").value.trim()||"Straelen";
+  var nlat=parseFloat(document.getElementById("e_lat").value), nlon=parseFloat(document.getElementById("e_lon").value);
+  if(validLat(nlat)) state.lat=nlat;        // ungültige Werte werden ignoriert (alter Wert bleibt)
+  if(validLon(nlon)) state.lon=nlon;
+  state.height=+document.getElementById("e_h").value||state.height;
+  state.weight=+document.getElementById("e_w").value||state.weight;
+  state.age=+document.getElementById("e_age").value||state.age;
+  state.sex=document.getElementById("e_sex").value;
+  state.activity=+document.getElementById("e_act").value||1.375;
+  state.adj=+document.getElementById("e_adj").value||0;
+  state.notes=document.getElementById("e_notes").value;
+  state.quotes=document.getElementById("e_quotes").value;
+  state.bVal=parseFloat(document.getElementById("e_bVal").value)||0;
+  state.bThr=parseFloat(document.getElementById("e_bThr").value)||0;
+  state.pin=(document.getElementById("e_pin").value||"").replace(/\D/g,"").slice(0,6);
+  state.apiBase=(document.getElementById("e_api").value||"").trim();
+  save(); renderHub(); showQuote(); fetchWeather(); closeEditor();
+  if(state.apiBase){ setTimeout(pullFromServer, 2500); }   // nach dem Push die Server-/Obsidian-Inhalte holen
+}
+
+document.getElementById("gear").onclick=openEditor;
+document.getElementById("e_close").onclick=closeEditor;
+document.getElementById("e_save").onclick=saveAll;
+document.getElementById("e_geo").onclick=function(){
+  var msg=document.getElementById("e_geoMsg"); msg.style.color="var(--mid)"; msg.textContent="suche …";
+  geocode(document.getElementById("e_place").value, function(r, err){
+    if(r){
+      document.getElementById("e_lat").value=r.lat.toFixed(4);
+      document.getElementById("e_lon").value=r.lon.toFixed(4);
+      if(r.name) document.getElementById("e_city").value=r.name.split(",")[0];
+      msg.style.color="var(--green)"; msg.textContent="✓ "+r.name+"  ("+r.lat.toFixed(3)+", "+r.lon.toFixed(3)+")";
+    } else {
+      msg.style.color="var(--red)"; msg.textContent="✗ "+(err||"nicht gefunden")+" – bitte lat/lon ggf. manuell eintragen";
+    }
+  });
+};
+document.getElementById("scrim").onclick=function(e){ if(e.target===this) closeEditor(); };
+document.getElementById("wxBtn").onclick=buildWeatherDetail;
+document.getElementById("calCard").onclick=function(){ openDetail("kalorien"); };
+document.getElementById("finBtn").onclick=function(){ openDetail("finanzen"); };
+document.getElementById("tileUnreal").onclick=function(){ openDetail("unreal"); };
+document.getElementById("tileSport").onclick=function(){ openDetail("sport"); };
+document.getElementById("tileGarten").onclick=function(){ openDetail("garten"); };
+document.getElementById("tileShameforest").onclick=function(){ openDetail("shameforest"); };
+document.getElementById("piChip").onclick=function(){ openDetail("pi"); };
+document.getElementById("quoteBar").onclick=openQuotes;    // Zitate/Reminder antippen -> verwalten
+document.getElementById("q_add").onclick=function(){
+  var v=document.getElementById("q_new").value.trim(); if(!v) return;
+  var arr=quoteList(); arr.push(v); state.quotes=arr.join("\n"); save();
+  document.getElementById("q_new").value=""; renderQuoteList(); showQuote();
+};
+document.getElementById("q_close").onclick=closeQuotes;
+document.getElementById("quoteScrim").onclick=function(e){ if(e.target===this) closeQuotes(); };
+document.getElementById("g_close").onclick=closeGartenEditor;
+document.getElementById("gScrim").onclick=function(e){ if(e.target===this) closeGartenEditor(); };
+
+function fmtUptime(s){ var d=Math.floor(s/86400), h=Math.floor((s%86400)/3600), m=Math.floor((s%3600)/60); if(d>0) return d+" d "+h+" h"; if(h>0) return h+" h "+m+" min"; return m+" min"; }
+function renderPi(){
+  var p=state.pi||{}, el=document.getElementById("piTemp"), chip=document.getElementById("piChip");
+  if(p&&p.tempC!=null){ el.textContent=Math.round(p.tempC)+"°"; var c=p.tempC>=75?"--red":(p.tempC>=62?"--amber":"--green"); chip.style.color="var("+c+")"; }
+  else { el.textContent="–°"; chip.style.color="var(--mid)"; }
+}
+function renderHub(){ renderClock(); renderCalories(); renderFin(); renderTodos(); renderNotes(); renderWxMini(); renderPi(); gUpdateGartenTileWarn(); }
+buildPinPad();
+renderHub(); startQuotes(); fetchWeather();
+if(state.apiBase){ pullFromServer(); }
+setInterval(pullFromServer, 20000);
+window.addEventListener("online", pullFromServer);
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) pullFromServer(); });
+setInterval(renderClock,1000);
+setInterval(function(){ renderTodos(); renderCalories(); },60000);
+setInterval(fetchWeather,30*60*1000);
+</script>
+</body>
+</html>
